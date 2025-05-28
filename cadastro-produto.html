@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boas-Vindas - Quantico</title>
+    <title>Cadastro de Produto - Quantico</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,7 +16,9 @@
                 <ul>
                     <li class="has-submenu">
                         <a href="#" class="menu-toggle" id="produtoMenuToggle" data-target="submenu-produto">Produto</a>
-                        <ul class="submenu" id="submenu-produto"> <li><a href="cadastro-produto.html">Cadastro</a></li> <li><a href="#">Localizar</a></li>
+                        <ul class="submenu" id="submenu-produto">
+                            <li><a href="cadastro-produto.html">Cadastro</a></li>
+                            <li><a href="#">Localizar</a></li>
                             <li><a href="#">Relatório</a></li>
                         </ul>
                     </li>
@@ -27,10 +29,29 @@
             </nav>
         </aside>
         <main class="content">
-            <h1>Boas-Vindas ao Quantico!</h1>
-            <p>Seu acesso foi realizado com sucesso.</p>
-            <p>Explore as funcionalidades do sistema através do menu lateral.</p>
-            </main>
+            <div class="form-container">
+                <h2>Cadastro de Produto</h2>
+                <form id="produtoForm">
+                    <div class="form-group">
+                        <label for="nomeProduto">Nome:</label>
+                        <input type="text" id="nomeProduto" name="nomeProduto" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="precoProduto">Preço:</label>
+                        <input type="number" id="precoProduto" name="precoProduto" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantidadeProduto">Quantidade:</label>
+                        <input type="number" id="quantidadeProduto" name="quantidadeProduto" required>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit">Salvar</button>
+                        <button type="button">Editar</button>
+                        <button type="button">Excluir</button>
+                    </div>
+                </form>
+            </div>
+        </main>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -51,7 +72,7 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
-        // Lógica para abrir/fechar submenus ao clicar
+        // Lógica para abrir/fechar submenus ao clicar (repetido aqui para manter a barra lateral funcional nesta página)
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
                 event.preventDefault(); // Impede o link de navegar
@@ -59,14 +80,12 @@
                 const targetId = this.dataset.target;
                 const submenu = document.getElementById(targetId);
 
-                // Fecha todos os outros submenus abertos
                 document.querySelectorAll('.submenu').forEach(sub => {
                     if (sub !== submenu && sub.classList.contains('active')) {
                         sub.classList.remove('active');
                     }
                 });
 
-                // Alterna a visibilidade do submenu clicado
                 submenu.classList.toggle('active');
             });
         });
@@ -79,6 +98,28 @@
                 console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
                 window.location.href = 'index.html';
             });
+        });
+
+        // Lógica para o formulário de Cadastro de Produto
+        document.getElementById('produtoForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Impede o envio padrão do formulário
+
+            const nome = document.getElementById('nomeProduto').value;
+            const preco = document.getElementById('precoProduto').value;
+            const quantidade = document.getElementById('quantidadeProduto').value;
+
+            alert(`Produto Salvo!\nNome: ${nome}\nPreço: ${preco}\nQuantidade: ${quantidade}`);
+            // Aqui é onde você integraria com o Firebase Firestore para salvar os dados
+            // Ex: firebase.firestore().collection('produtos').add({ nome, preco, quantidade });
+        });
+
+        // Adicionar eventos para os botões Editar e Excluir (apenas alertas por enquanto)
+        document.querySelector('.button-group button:nth-child(2)').addEventListener('click', function() {
+            alert('Funcionalidade de Editar Produto (a ser implementada)');
+        });
+
+        document.querySelector('.button-group button:nth-child(3)').addEventListener('click', function() {
+            alert('Funcionalidade de Excluir Produto (a ser implementada)');
         });
     </script>
 </body>
