@@ -85,6 +85,8 @@ button[type="submit"]:hover {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    position: relative; /* Importante para o posicionamento do submenu */
+    z-index: 10; /* Garante que o sidebar fique acima de outros elementos */
 }
 
 .sidebar-header {
@@ -107,6 +109,7 @@ button[type="submit"]:hover {
 
 .sidebar nav ul li {
     margin-bottom: 10px;
+    position: relative; /* Necessário para posicionar o submenu */
 }
 
 .sidebar nav ul li a {
@@ -121,6 +124,32 @@ button[type="submit"]:hover {
 .sidebar nav ul li a:hover {
     background-color: #34495e;
 }
+
+/* Estilos para o Submenu */
+.submenu {
+    list-style: none;
+    padding: 0;
+    margin: 5px 0 0 15px; /* Recuo para submenus */
+    display: none; /* Esconde o submenu por padrão */
+    background-color: #34495e; /* Fundo diferente para submenus */
+    border-radius: 4px;
+    overflow: hidden; /* Para ajustar o padding dos itens */
+}
+
+.has-submenu:hover > .submenu {
+    display: block; /* Mostra o submenu ao passar o mouse no item pai */
+}
+
+.submenu li a {
+    padding: 8px 15px; /* Padding menor para itens de submenu */
+    font-size: 0.9em; /* Fonte um pouco menor */
+    color: #bdc3c7; /* Cor de texto ligeiramente diferente */
+}
+
+.submenu li a:hover {
+    background-color: #2c3e50; /* Cor de hover para submenus */
+}
+
 
 .content {
     flex-grow: 1; /* Ocupa o restante do espaço */
