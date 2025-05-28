@@ -14,11 +14,7 @@
             </div>
             <nav>
                 <ul>
-                    <li><a href="#">Dashboard</a></li>
-                    <li><a href="#">Meus Dados</a></li>
-                    <li><a href="#">Relatórios</a></li>
-                    <li><a href="#">Configurações</a></li>
-                    <li><a href="#" id="logoutButton">Sair</a></li>
+                    <li><a href="#">Produto</a></li> <li><a href="#">CRM</a></li>     <li><a href="#">Usuário</a></li> <li><a href="#" id="logoutButton">Sair</a></li>
                 </ul>
             </nav>
         </aside>
@@ -47,28 +43,11 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
 
-        // Verifica o status de autenticação. Se o usuário não estiver logado pelo Firebase,
-        // o que será o caso após o login "1/1", ele não será redirecionado para o login.
-        // Isso é uma medida de segurança caso você queira futuramente usar login Firebase novamente.
-        // Por enquanto, o login "1/1" apenas redireciona sem criar uma sessão Firebase.
-        // Se a página for acessada diretamente, ela redirecionará para index.html se não houver sessão Firebase.
-        auth.onAuthStateChanged(function(user) {
-             // Deixando vazio para não redirecionar imediatamente com o login simples 1/1,
-             // mas mantendo a estrutura caso queira reativar a segurança Firebase.
-             // Para este caso, o usuário é considerado "logado" por ter chegado aqui do index.html.
-             // Se você quiser que o botão de "Sair" funcione e *só* ele leve de volta,
-             // esta função pode ser removida ou adaptada.
-        });
-
         // Lógica para o botão de sair na página de boas-vindas
         document.getElementById('logoutButton').addEventListener('click', function() {
-            // Tenta fazer logout do Firebase (se houver alguma sessão ativa)
-            // e sempre redireciona para a página de login.
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
             }).catch((error) => {
-                // Se der erro no logout (ex: não estava logado via Firebase),
-                // ainda assim redireciona para a página de login.
                 console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
                 window.location.href = 'index.html';
             });
