@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Produtos - Quantico</title>
+    <title>Relatório de Produtos (JP) - Quantico</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +19,8 @@
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
                             <li><a href="localizar-produto.html">Localizar</a></li>
-                            <li><a href="relatorio-produto.html">Relatório</a></li> </ul>
+                            <li><a href="relatorio-produto.html">Relatório</a></li>
+                        </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
                     <li><a href="#">Usuário</a></li>
@@ -29,23 +30,24 @@
         </aside>
         <main class="content">
             <div class="form-container">
-                <h2>Relatório de Produtos Cadastrados</h2>
-                </div>
+                <h2>Relatório de Produtos Cadastrados (JP)</h2>
+            </div>
 
             <div class="search-results">
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código</th>
+                            <th>Código/ID</th>
                             <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
-                            <th>Data de Cadastro</th> </tr>
+                            <th>Data de Cadastro</th>
+                        </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
                 </table>
-                <p id="noResultsMessage" style="text-align: center; margin-top: 20px; display: none;">Nenhum produto cadastrado.</p>
+                <p id="noResultsMessage" style="display: none; text-align: center; margin-top: 20px;">Nenhum produto cadastrado.</p>
             </div>
         </main>
     </div>
@@ -53,15 +55,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <script>
-        // Suas credenciais do Firebase
+        // Configuração do Firebase com seus dados - ATUALIZE A API KEY AQUI!
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
+            apiKey: "COLE_SUA_CHAVE_DE_API_AQUI", // <--- *** SUBSTITUA ESTA LINHA PELA SUA CHAVE DE API REAL DO FIREBASE ***
             authDomain: "quantico-app-18f7f.firebaseapp.com",
             projectId: "quantico-app-18f7f",
             storageBucket: "quantico-app-18f7f.appspot.com",
             messagingSenderId: "150416611107",
-            appId: "1:150416611107:web:e5fe8844ec909b35d55e96"
+            appId: "1:150416611107:web:bfa4924b8e9b2199d55e96" // Usando o novo ID do app que você forneceu
         };
 
         // Inicializa o Firebase
@@ -87,7 +90,7 @@
             });
         });
 
-        // Lógica para o botão de sair na página de boas-vindas
+        // Lógica para o botão de sair
         document.getElementById('logoutButton').addEventListener('click', function() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
@@ -97,18 +100,15 @@
             });
         });
 
-        // Função para carregar e exibir TODOS os produtos (para relatório)
+        // Função para carregar todos os produtos para o relatório
         async function loadAllProductsForReport() {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-
-            resultsTableBody.innerHTML = ''; // Limpa resultados anteriores
-            noResultsMessage.style.display = 'none';
+            resultsTableBody.innerHTML = ''; // Limpa a tabela
+            noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
-                const productsRef = db.collection('produtos');
-                // Opcional: ordenar por data de cadastro, nome, etc.
-                const querySnapshot = await productsRef.orderBy('dataCadastro', 'desc').get(); // Exemplo de ordenação
+                const querySnapshot = await db.collection('produtos').orderBy('dataCadastro', 'desc').get();
 
                 if (querySnapshot.empty) {
                     noResultsMessage.style.display = 'block';

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
+            // Lógica de login simples para fins de demonstração
             if (username === '1' && password === '1') {
                 window.location.href = 'home.html';
             } else {

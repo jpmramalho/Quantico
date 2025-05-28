@@ -19,7 +19,8 @@
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
                             <li><a href="localizar-produto.html">Localizar</a></li>
-                            <li><a href="relatorio-produto.html">Relatório</a></li> </ul>
+                            <li><a href="relatorio-produto.html">Relatório</a></li>
+                        </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
                     <li><a href="#">Usuário</a></li>
@@ -33,11 +34,10 @@
                 <form id="searchForm">
                     <div class="form-group">
                         <label for="searchQuery">Buscar por Nome ou Código:</label>
-                        <input type="search" id="searchQuery" name="searchQuery" placeholder="Digite o nome ou código do produto">
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome ou ID do produto">
                     </div>
-                    <div class="button-group">
-                        <button type="submit">Buscar</button>
-                    </div>
+                    <button type="submit">Buscar</button>
+                    <button type="button" id="clearSearch">Limpar Busca</button>
                 </form>
             </div>
 
@@ -46,7 +46,7 @@
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código</th>
+                            <th>Código/ID</th>
                             <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
@@ -55,7 +55,7 @@
                     <tbody id="resultsTableBody">
                         </tbody>
                 </table>
-                <p id="noResultsMessage" style="text-align: center; margin-top: 20px; display: none;">Nenhum produto encontrado.</p>
+                <p id="noResultsMessage" style="display: none; text-align: center; margin-top: 20px;">Nenhum produto encontrado.</p>
             </div>
         </main>
     </div>
@@ -63,15 +63,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <script>
-        // Suas credenciais do Firebase
+        // Configuração do Firebase com seus dados - ATUALIZE A API KEY AQUI!
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
+            apiKey: "COLE_SUA_CHAVE_DE_API_AQUI", // <--- *** SUBSTITUA ESTA LINHA PELA SUA CHAVE DE API REAL DO FIREBASE ***
             authDomain: "quantico-app-18f7f.firebaseapp.com",
             projectId: "quantico-app-18f7f",
             storageBucket: "quantico-app-18f7f.appspot.com",
             messagingSenderId: "150416611107",
-            appId: "1:150416611107:web:e5fe8844ec909b35d55e96"
+            appId: "1:150416611107:web:bfa4924b8e9b2199d55e96" // Usando o novo ID do app que você forneceu
         };
 
         // Inicializa o Firebase
@@ -97,7 +98,7 @@
             });
         });
 
-        // Lógica para o botão de sair na página de boas-vindas
+        // Lógica para o botão de sair
         document.getElementById('logoutButton').addEventListener('click', function() {
             auth.signOut().then(() => {
                 window.location.href = 'index.html';
@@ -107,60 +108,65 @@
             });
         });
 
-        // Função para carregar e exibir os produtos
-        async function loadProducts(query = '') {
+        // Função para carregar e exibir produtos
+        async function loadProducts(searchQuery = '') {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-
-            // Limpa os resultados anteriores
-            resultsTableBody.innerHTML = '';
-            noResultsMessage.style.display = 'none';
+            resultsTableBody.innerHTML = ''; // Limpa a tabela
+            noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
                 let productsRef = db.collection('produtos');
                 let querySnapshot;
-                let productsToDisplay = [];
 
-                if (query) {
-                    querySnapshot = await productsRef.get();
-                    querySnapshot.forEach(doc => {
-                        productsToDisplay.push({ id: doc.id, ...doc.data() });
-                    });
+                if (searchQuery.trim() !== '') {
+                    // Tenta buscar por nome (ignora case)
+                    // Para buscas mais avançadas, considere uma solução de busca full-text como Algolia ou uma Cloud Function
+                    querySnapshot = await productsRef
+                        .where('nome', '>=', searchQuery)
+                        .where('nome', '<=', searchQuery + '\uf8ff')
+                        .get();
 
-                    const lowerCaseQuery = query.toLowerCase();
-                    productsToDisplay = productsToDisplay.filter(product =>
-                        (product.nome && product.nome.toLowerCase().includes(lowerCaseQuery)) ||
-                        (product.codigo && product.codigo.toLowerCase().includes(lowerCaseQuery))
-                    );
+                    // Se não encontrar por nome, pode-se tentar buscar por ID do documento
+                    if (querySnapshot.empty) {
+                        try {
+                            const doc = await productsRef.doc(searchQuery).get();
+                            if (doc.exists) {
+                                querySnapshot = {
+                                    forEach: (callback) => callback(doc),
+                                    empty: false
+                                };
+                            } else {
+                                querySnapshot = { empty: true };
+                            }
+                        } catch (e) {
+                            // Erro ao tentar buscar por ID (formato inválido, etc.)
+                            querySnapshot = { empty: true };
+                        }
+                    }
 
                 } else {
+                    // Se não houver termo de busca, carrega todos os produtos
                     querySnapshot = await productsRef.get();
-                    productsToDisplay = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 }
 
-                displayProducts(productsToDisplay);
+                if (querySnapshot.empty) {
+                    noResultsMessage.style.display = 'block';
+                    return;
+                }
 
-            } catch (error) {
-                console.error("Erro ao carregar produtos: ", error);
-                alert("Ocorreu um erro ao carregar os produtos. Verifique o console para mais detalhes.");
-            }
-        }
-
-        // Função auxiliar para exibir os produtos na tabela
-        function displayProducts(products) {
-            const resultsTableBody = document.getElementById('resultsTableBody');
-            const noResultsMessage = document.getElementById('noResultsMessage');
-
-            if (products.length > 0) {
-                products.forEach(product => {
+                querySnapshot.forEach(doc => {
+                    const product = doc.data();
                     const row = resultsTableBody.insertRow();
-                    row.insertCell(0).textContent = product.id;
+                    row.insertCell(0).textContent = doc.id; // ID do Firestore
                     row.insertCell(1).textContent = product.nome;
                     row.insertCell(2).textContent = product.quantidade;
                     row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
                 });
-            } else {
-                noResultsMessage.style.display = 'block';
+
+            } catch (error) {
+                console.error("Erro ao carregar produtos: ", error);
+                alert("Ocorreu um erro ao carregar os produtos. Verifique o console para mais detalhes.");
             }
         }
 
@@ -169,6 +175,12 @@
             event.preventDefault();
             const searchQuery = document.getElementById('searchQuery').value;
             loadProducts(searchQuery);
+        });
+
+        // Lógica para o botão "Limpar Busca"
+        document.getElementById('clearSearch').addEventListener('click', function() {
+            document.getElementById('searchQuery').value = ''; // Limpa o campo de busca
+            loadProducts(); // Recarrega todos os produtos
         });
 
         // Carrega todos os produtos ao carregar a página

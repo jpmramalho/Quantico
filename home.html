@@ -18,7 +18,8 @@
                         <a href="#" class="menu-toggle" id="produtoMenuToggle" data-target="submenu-produto">Produto</a>
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
-                            <li><a href="localizar-produto.html">Localizar</a></li> <li><a href="#">Relatório</a></li>
+                            <li><a href="localizar-produto.html">Localizar</a></li>
+                            <li><a href="relatorio-produto.html">Relatório</a></li>
                         </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
@@ -31,20 +32,22 @@
             <h1>Boas-Vindas ao Quantico!</h1>
             <p>Seu acesso foi realizado com sucesso.</p>
             <p>Explore as funcionalidades do sistema através do menu lateral.</p>
-            </main>
+        </main>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
     <script>
-        // Suas credenciais do Firebase
+        // Configuração do Firebase com seus dados - ATUALIZE A API KEY AQUI!
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
+            apiKey: "COLE_SUA_CHAVE_DE_API_AQUI", // <--- *** SUBSTITUA ESTA LINHA PELA SUA CHAVE DE API REAL DO FIREBASE ***
             authDomain: "quantico-app-18f7f.firebaseapp.com",
             projectId: "quantico-app-18f7f",
             storageBucket: "quantico-app-18f7f.appspot.com",
             messagingSenderId: "150416611107",
-            appId: "1:150416611107:web:e5fe8844ec909b35d55e96"
+            appId: "1:150416611107:web:bfa4924b8e9b2199d55e96" // Usando o novo ID do app que você forneceu
         };
 
         // Inicializa o Firebase
