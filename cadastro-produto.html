@@ -19,7 +19,8 @@
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
                             <li><a href="localizar-produto.html">Localizar</a></li>
-                            <li><a href="relatorio-produto.html">Relatório</a></li> </ul>
+                            <li><a href="relatorio-produto.html">Relatório</a></li>
+                        </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
                     <li><a href="#">Usuário</a></li>
@@ -60,7 +61,7 @@
     <script>
         // Suas credenciais do Firebase
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
+            apiKey: "YOUR_API_KEY", // <--- Você DEVE substituir esta linha pela SUA CHAVE DE API REAL do Firebase
             authDomain: "quantico-app-18f7f.firebaseapp.com",
             projectId: "quantico-app-18f7f",
             storageBucket: "quantico-app-18f7f.appspot.com",
@@ -109,17 +110,23 @@
             const preco = parseFloat(document.getElementById('precoProduto').value);
             const quantidade = parseInt(document.getElementById('quantidadeProduto').value);
 
+            // Verificação básica de entrada para evitar NaN ou valores inválidos
+            if (isNaN(preco) || isNaN(quantidade)) {
+                alert("Por favor, insira valores válidos para Preço e Quantidade.");
+                return;
+            }
+
             try {
                 // Salva o produto no Firestore
                 await db.collection('produtos').add({
                     nome: nome,
                     preco: preco,
                     quantidade: quantidade,
-                    dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
+                    dataCadastro: firebase.firestore.FieldValue.serverTimestamp() // Grava o timestamp do servidor
                 });
 
                 alert('Produto Salvo com Sucesso!');
-                document.getElementById('produtoForm').reset();
+                document.getElementById('produtoForm').reset(); // Limpa o formulário
 
             } catch (error) {
                 console.error("Erro ao salvar o produto: ", error);
@@ -127,6 +134,7 @@
             }
         });
 
+        // Lógica para os botões de Editar e Excluir (apenas alertas por enquanto)
         document.querySelector('.button-group button:nth-child(2)').addEventListener('click', function() {
             alert('Funcionalidade de Editar Produto (a ser implementada)');
         });
