@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Produto - Quantico</title>
+    <title>Relatório de Produtos - Quantico</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,26 +29,23 @@
         </aside>
         <main class="content">
             <div class="form-container">
-                <h2>Cadastro de Produto</h2>
-                <form id="produtoForm">
-                    <div class="form-group">
-                        <label for="nomeProduto">Nome:</label>
-                        <input type="text" id="nomeProduto" name="nomeProduto" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="precoProduto">Preço:</label>
-                        <input type="number" id="precoProduto" name="precoProduto" step="0.01" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="quantidadeProduto">Quantidade:</label>
-                        <input type="number" id="quantidadeProduto" name="quantidadeProduto" required>
-                    </div>
-                    <div class="button-group">
-                        <button type="submit">Salvar</button>
-                        <button type="button">Editar</button>
-                        <button type="button">Excluir</button>
-                    </div>
-                </form>
+                <h2>Relatório de Produtos Cadastrados</h2>
+                </div>
+
+            <div class="search-results">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Quantidade</th>
+                            <th>Preço</th>
+                            <th>Data de Cadastro</th> </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        </tbody>
+                </table>
+                <p id="noResultsMessage" style="text-align: center; margin-top: 20px; display: none;">Nenhum produto cadastrado.</p>
             </div>
         </main>
     </div>
@@ -56,7 +53,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
     <script>
         // Suas credenciais do Firebase
         const firebaseConfig = {
@@ -101,38 +97,48 @@
             });
         });
 
-        // Lógica para o formulário de Cadastro de Produto
-        document.getElementById('produtoForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
+        // Função para carregar e exibir TODOS os produtos (para relatório)
+        async function loadAllProductsForReport() {
+            const resultsTableBody = document.getElementById('resultsTableBody');
+            const noResultsMessage = document.getElementById('noResultsMessage');
 
-            const nome = document.getElementById('nomeProduto').value;
-            const preco = parseFloat(document.getElementById('precoProduto').value);
-            const quantidade = parseInt(document.getElementById('quantidadeProduto').value);
+            resultsTableBody.innerHTML = ''; // Limpa resultados anteriores
+            noResultsMessage.style.display = 'none';
 
             try {
-                // Salva o produto no Firestore
-                await db.collection('produtos').add({
-                    nome: nome,
-                    preco: preco,
-                    quantidade: quantidade,
-                    dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
+                const productsRef = db.collection('produtos');
+                // Opcional: ordenar por data de cadastro, nome, etc.
+                const querySnapshot = await productsRef.orderBy('dataCadastro', 'desc').get(); // Exemplo de ordenação
+
+                if (querySnapshot.empty) {
+                    noResultsMessage.style.display = 'block';
+                    return;
+                }
+
+                querySnapshot.forEach(doc => {
+                    const product = doc.data();
+                    const row = resultsTableBody.insertRow();
+                    row.insertCell(0).textContent = doc.id; // Código/ID do Firestore
+                    row.insertCell(1).textContent = product.nome;
+                    row.insertCell(2).textContent = product.quantidade;
+                    row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+
+                    // Formata a data de cadastro, se existir
+                    const dataCadastro = product.dataCadastro ?
+                                         new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                                         'N/A';
+                    row.insertCell(4).textContent = dataCadastro;
                 });
 
-                alert('Produto Salvo com Sucesso!');
-                document.getElementById('produtoForm').reset();
-
             } catch (error) {
-                console.error("Erro ao salvar o produto: ", error);
-                alert("Ocorreu um erro ao salvar o produto. Verifique o console para mais detalhes.");
+                console.error("Erro ao carregar produtos para relatório: ", error);
+                alert("Ocorreu um erro ao carregar os produtos para o relatório. Verifique o console para mais detalhes.");
             }
-        });
+        }
 
-        document.querySelector('.button-group button:nth-child(2)').addEventListener('click', function() {
-            alert('Funcionalidade de Editar Produto (a ser implementada)');
-        });
-
-        document.querySelector('.button-group button:nth-child(3)').addEventListener('click', function() {
-            alert('Funcionalidade de Excluir Produto (a ser implementada)');
+        // Carrega todos os produtos ao carregar a página do relatório
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllProductsForReport();
         });
     </script>
 </body>

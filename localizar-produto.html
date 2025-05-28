@@ -19,8 +19,7 @@
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
                             <li><a href="localizar-produto.html">Localizar</a></li>
-                            <li><a href="#">Relatório</a></li>
-                        </ul>
+                            <li><a href="relatorio-produto.html">Relatório</a></li> </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
                     <li><a href="#">Usuário</a></li>
@@ -54,19 +53,7 @@
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
-                        <tr>
-                            <td>12345</td>
-                            <td>Monitor UltraWide</td>
-                            <td>10</td>
-                            <td>R$ 1.500,00</td>
-                        </tr>
-                        <tr>
-                            <td>67890</td>
-                            <td>Teclado Mecânico RGB</td>
-                            <td>25</td>
-                            <td>R$ 350,00</td>
-                        </tr>
-                    </tbody>
+                        </tbody>
                 </table>
                 <p id="noResultsMessage" style="text-align: center; margin-top: 20px; display: none;">Nenhum produto encontrado.</p>
             </div>
@@ -75,8 +62,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script>
-        // Suas credenciais do Firebase (ainda necessárias para inicializar o app para o logout)
+        // Suas credenciais do Firebase
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
             authDomain: "quantico-app-18f7f.firebaseapp.com",
@@ -89,9 +77,9 @@
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        // const db = firebase.firestore(); // Descomente se for usar o Firestore para buscar
+        const db = firebase.firestore();
 
-        // Lógica para abrir/fechar submenus ao clicar (repetido aqui para manter a barra lateral funcional nesta página)
+        // Lógica para abrir/fechar submenus ao clicar
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
                 event.preventDefault();
@@ -119,11 +107,8 @@
             });
         });
 
-        // Lógica para o formulário de Busca de Produto
-        document.getElementById('searchForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Impede o envio padrão do formulário
-
-            const searchQuery = document.getElementById('searchQuery').value.toLowerCase();
+        // Função para carregar e exibir os produtos
+        async function loadProducts(query = '') {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
 
@@ -131,39 +116,65 @@
             resultsTableBody.innerHTML = '';
             noResultsMessage.style.display = 'none';
 
-            // ATENÇÃO: Esta é uma simulação de busca.
-            // Em um sistema real, você faria uma requisição ao Firebase Firestore
-            // ou a um backend para buscar os produtos.
+            try {
+                let productsRef = db.collection('produtos');
+                let querySnapshot;
+                let productsToDisplay = [];
 
-            // Dados de exemplo para simulação (em um app real, viriam do seu banco de dados)
-            const mockProducts = [
-                { codigo: '12345', nome: 'Monitor UltraWide', quantidade: 10, preco: 1500.00 },
-                { codigo: '67890', nome: 'Teclado Mecânico RGB', quantidade: 25, preco: 350.00 },
-                { codigo: '11223', nome: 'Mouse Gamer Ergonômico', quantidade: 50, preco: 120.00 },
-                { codigo: '33445', nome: 'Webcam Full HD', quantidade: 15, preco: 200.00 },
-                { codigo: '98765', nome: 'Headset Wireless', quantidade: 30, preco: 450.00 }
-            ];
+                if (query) {
+                    querySnapshot = await productsRef.get();
+                    querySnapshot.forEach(doc => {
+                        productsToDisplay.push({ id: doc.id, ...doc.data() });
+                    });
 
-            const filteredProducts = mockProducts.filter(product =>
-                product.nome.toLowerCase().includes(searchQuery) ||
-                product.codigo.toLowerCase().includes(searchQuery)
-            );
+                    const lowerCaseQuery = query.toLowerCase();
+                    productsToDisplay = productsToDisplay.filter(product =>
+                        (product.nome && product.nome.toLowerCase().includes(lowerCaseQuery)) ||
+                        (product.codigo && product.codigo.toLowerCase().includes(lowerCaseQuery))
+                    );
 
-            if (filteredProducts.length > 0) {
-                filteredProducts.forEach(product => {
+                } else {
+                    querySnapshot = await productsRef.get();
+                    productsToDisplay = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                }
+
+                displayProducts(productsToDisplay);
+
+            } catch (error) {
+                console.error("Erro ao carregar produtos: ", error);
+                alert("Ocorreu um erro ao carregar os produtos. Verifique o console para mais detalhes.");
+            }
+        }
+
+        // Função auxiliar para exibir os produtos na tabela
+        function displayProducts(products) {
+            const resultsTableBody = document.getElementById('resultsTableBody');
+            const noResultsMessage = document.getElementById('noResultsMessage');
+
+            if (products.length > 0) {
+                products.forEach(product => {
                     const row = resultsTableBody.insertRow();
-                    row.insertCell(0).textContent = product.codigo;
+                    row.insertCell(0).textContent = product.id;
                     row.insertCell(1).textContent = product.nome;
                     row.insertCell(2).textContent = product.quantidade;
-                    row.insertCell(3).textContent = `R$ ${product.preco.toFixed(2).replace('.', ',')}`; // Formato monetário BR
+                    row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
                 });
             } else {
                 noResultsMessage.style.display = 'block';
             }
+        }
+
+        // Lógica para o formulário de Busca de Produto
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const searchQuery = document.getElementById('searchQuery').value;
+            loadProducts(searchQuery);
         });
 
-        // Simula uma busca inicial ao carregar a página (opcional)
-        // document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+        // Carrega todos os produtos ao carregar a página
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProducts();
+        });
     </script>
 </body>
 </html>
