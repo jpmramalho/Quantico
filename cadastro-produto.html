@@ -18,8 +18,7 @@
                         <a href="#" class="menu-toggle" id="produtoMenuToggle" data-target="submenu-produto">Produto</a>
                         <ul class="submenu" id="submenu-produto">
                             <li><a href="cadastro-produto.html">Cadastro</a></li>
-                            <li><a href="#">Localizar</a></li>
-                            <li><a href="#">Relatório</a></li>
+                            <li><a href="localizar-produto.html">Localizar</a></li> <li><a href="#">Relatório</a></li>
                         </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
@@ -75,7 +74,7 @@
         // Lógica para abrir/fechar submenus ao clicar (repetido aqui para manter a barra lateral funcional nesta página)
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
-                event.preventDefault(); // Impede o link de navegar
+                event.preventDefault();
 
                 const targetId = this.dataset.target;
                 const submenu = document.getElementById(targetId);
@@ -102,18 +101,15 @@
 
         // Lógica para o formulário de Cadastro de Produto
         document.getElementById('produtoForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Impede o envio padrão do formulário
+            event.preventDefault();
 
             const nome = document.getElementById('nomeProduto').value;
             const preco = document.getElementById('precoProduto').value;
             const quantidade = document.getElementById('quantidadeProduto').value;
 
             alert(`Produto Salvo!\nNome: ${nome}\nPreço: ${preco}\nQuantidade: ${quantidade}`);
-            // Aqui é onde você integraria com o Firebase Firestore para salvar os dados
-            // Ex: firebase.firestore().collection('produtos').add({ nome, preco, quantidade });
         });
 
-        // Adicionar eventos para os botões Editar e Excluir (apenas alertas por enquanto)
         document.querySelector('.button-group button:nth-child(2)').addEventListener('click', function() {
             alert('Funcionalidade de Editar Produto (a ser implementada)');
         });

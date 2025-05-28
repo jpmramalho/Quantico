@@ -16,8 +16,9 @@
                 <ul>
                     <li class="has-submenu">
                         <a href="#" class="menu-toggle" id="produtoMenuToggle" data-target="submenu-produto">Produto</a>
-                        <ul class="submenu" id="submenu-produto"> <li><a href="cadastro-produto.html">Cadastro</a></li> <li><a href="#">Localizar</a></li>
-                            <li><a href="#">Relatório</a></li>
+                        <ul class="submenu" id="submenu-produto">
+                            <li><a href="cadastro-produto.html">Cadastro</a></li>
+                            <li><a href="localizar-produto.html">Localizar</a></li> <li><a href="#">Relatório</a></li>
                         </ul>
                     </li>
                     <li><a href="#">CRM</a></li>
@@ -54,19 +55,17 @@
         // Lógica para abrir/fechar submenus ao clicar
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
-                event.preventDefault(); // Impede o link de navegar
+                event.preventDefault();
 
                 const targetId = this.dataset.target;
                 const submenu = document.getElementById(targetId);
 
-                // Fecha todos os outros submenus abertos
                 document.querySelectorAll('.submenu').forEach(sub => {
                     if (sub !== submenu && sub.classList.contains('active')) {
                         sub.classList.remove('active');
                     }
                 });
 
-                // Alterna a visibilidade do submenu clicado
                 submenu.classList.toggle('active');
             });
         });

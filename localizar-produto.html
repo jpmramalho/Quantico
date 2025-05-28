@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Localizar Produto - Quantico</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Quantico Menu</h3>
+            </div>
+            <nav>
+                <ul>
+                    <li class="has-submenu">
+                        <a href="#" class="menu-toggle" id="produtoMenuToggle" data-target="submenu-produto">Produto</a>
+                        <ul class="submenu" id="submenu-produto">
+                            <li><a href="cadastro-produto.html">Cadastro</a></li>
+                            <li><a href="localizar-produto.html">Localizar</a></li>
+                            <li><a href="#">Relatório</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#">CRM</a></li>
+                    <li><a href="#">Usuário</a></li>
+                    <li><a href="#" id="logoutButton">Sair</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            <div class="form-container">
+                <h2>Localizar Produto</h2>
+                <form id="searchForm">
+                    <div class="form-group">
+                        <label for="searchQuery">Buscar por Nome ou Código:</label>
+                        <input type="search" id="searchQuery" name="searchQuery" placeholder="Digite o nome ou código do produto">
+                    </div>
+                    <div class="button-group">
+                        <button type="submit">Buscar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="search-results">
+                <h3>Resultados da Busca</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Quantidade</th>
+                            <th>Preço</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <tr>
+                            <td>12345</td>
+                            <td>Monitor UltraWide</td>
+                            <td>10</td>
+                            <td>R$ 1.500,00</td>
+                        </tr>
+                        <tr>
+                            <td>67890</td>
+                            <td>Teclado Mecânico RGB</td>
+                            <td>25</td>
+                            <td>R$ 350,00</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p id="noResultsMessage" style="text-align: center; margin-top: 20px; display: none;">Nenhum produto encontrado.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script>
+        // Suas credenciais do Firebase (ainda necessárias para inicializar o app para o logout)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY", // <-- SUBSTITUA PELA SUA CHAVE DE API REAL
+            authDomain: "quantico-app-18f7f.firebaseapp.com",
+            projectId: "quantico-app-18f7f",
+            storageBucket: "quantico-app-18f7f.appspot.com",
+            messagingSenderId: "150416611107",
+            appId: "1:150416611107:web:e5fe8844ec909b35d55e96"
+        };
+
+        // Inicializa o Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        // const db = firebase.firestore(); // Descomente se for usar o Firestore para buscar
+
+        // Lógica para abrir/fechar submenus ao clicar (repetido aqui para manter a barra lateral funcional nesta página)
+        document.querySelectorAll('.menu-toggle').forEach(item => {
+            item.addEventListener('click', function(event) {
+                event.preventDefault();
+
+                const targetId = this.dataset.target;
+                const submenu = document.getElementById(targetId);
+
+                document.querySelectorAll('.submenu').forEach(sub => {
+                    if (sub !== submenu && sub.classList.contains('active')) {
+                        sub.classList.remove('active');
+                    }
+                });
+
+                submenu.classList.toggle('active');
+            });
+        });
+
+        // Lógica para o botão de sair na página de boas-vindas
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            }).catch((error) => {
+                console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                window.location.href = 'index.html';
+            });
+        });
+
+        // Lógica para o formulário de Busca de Produto
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Impede o envio padrão do formulário
+
+            const searchQuery = document.getElementById('searchQuery').value.toLowerCase();
+            const resultsTableBody = document.getElementById('resultsTableBody');
+            const noResultsMessage = document.getElementById('noResultsMessage');
+
+            // Limpa os resultados anteriores
+            resultsTableBody.innerHTML = '';
+            noResultsMessage.style.display = 'none';
+
+            // ATENÇÃO: Esta é uma simulação de busca.
+            // Em um sistema real, você faria uma requisição ao Firebase Firestore
+            // ou a um backend para buscar os produtos.
+
+            // Dados de exemplo para simulação (em um app real, viriam do seu banco de dados)
+            const mockProducts = [
+                { codigo: '12345', nome: 'Monitor UltraWide', quantidade: 10, preco: 1500.00 },
+                { codigo: '67890', nome: 'Teclado Mecânico RGB', quantidade: 25, preco: 350.00 },
+                { codigo: '11223', nome: 'Mouse Gamer Ergonômico', quantidade: 50, preco: 120.00 },
+                { codigo: '33445', nome: 'Webcam Full HD', quantidade: 15, preco: 200.00 },
+                { codigo: '98765', nome: 'Headset Wireless', quantidade: 30, preco: 450.00 }
+            ];
+
+            const filteredProducts = mockProducts.filter(product =>
+                product.nome.toLowerCase().includes(searchQuery) ||
+                product.codigo.toLowerCase().includes(searchQuery)
+            );
+
+            if (filteredProducts.length > 0) {
+                filteredProducts.forEach(product => {
+                    const row = resultsTableBody.insertRow();
+                    row.insertCell(0).textContent = product.codigo;
+                    row.insertCell(1).textContent = product.nome;
+                    row.insertCell(2).textContent = product.quantidade;
+                    row.insertCell(3).textContent = `R$ ${product.preco.toFixed(2).replace('.', ',')}`; // Formato monetário BR
+                });
+            } else {
+                noResultsMessage.style.display = 'block';
+            }
+        });
+
+        // Simula uma busca inicial ao carregar a página (opcional)
+        // document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+    </script>
+</body>
+</html>
