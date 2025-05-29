@@ -33,8 +33,8 @@
                 <h2>Localizar Produto</h2>
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="searchQuery">Buscar por Nome do Produto:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto ou parte dele...">
+                        <label for="searchQuery">Buscar por Código ou Nome do Produto:</label>
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código (ID) ou nome do produto...">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -49,7 +49,8 @@
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código Seq.</th> <th>Nome do Produto</th>
+                            <th>Código Seq.</th>
+                            <th>ID do Firestore</th> <th>Nome do Produto</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
                             <th>Data de Cadastro</th>
@@ -105,7 +106,7 @@
                 }
             });
 
-            // Função para carregar produtos
+            // Função para carregar produtos com busca por ID ou Nome
             async function loadProducts(searchQuery = '') {
                 const resultsTableBody = document.getElementById('resultsTableBody');
                 resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
@@ -118,40 +119,66 @@
                     return;
                 }
 
-                try {
-                    let productsRef = db.collection('produtos');
-                    let query;
+                let products = []; // Array para armazenar os produtos encontrados
 
-                    if (searchQuery) {
-                        // Para buscas que iniciam com o termo
-                        query = productsRef.orderBy('nome')
-                                            .startAt(searchQuery)
-                                            .endAt(searchQuery + '\uf8ff'); // '\uf8ff' é um caractere unicode que permite buscar até o fim de uma string
-                    } else {
-                        query = productsRef.orderBy('nome'); // Ordena por nome se não houver busca
+                try {
+                    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+                    // 1. Tentar buscar pelo ID do Firestore (se o termo de busca não estiver vazio)
+                    if (normalizedSearchQuery) {
+                        const docRef = db.collection('produtos').doc(searchQuery); // Busca direta por ID
+                        const doc = await docRef.get();
+                        if (doc.exists) {
+                            products.push({ id: doc.id, ...doc.data() });
+                        }
                     }
 
-                    const querySnapshot = await query.get();
+                    // 2. Se nenhum produto foi encontrado pelo ID OU se a busca por ID não foi tentada (searchQuery vazio),
+                    // ou se você quer que a busca por nome seja prioritária/complementar
+                    // Se não encontrou pelo ID ou a busca é vazia, tenta buscar por nome
+                    if (products.length === 0) {
+                        let nameQuery;
+                        if (normalizedSearchQuery) {
+                            // Busca por nome que COMEÇA COM o termo
+                            nameQuery = db.collection('produtos')
+                                          .orderBy('nome')
+                                          .startAt(searchQuery)
+                                          .endAt(searchQuery + '\uf8ff');
+                        } else {
+                            // Carrega todos os produtos se a busca estiver vazia
+                            nameQuery = db.collection('produtos').orderBy('nome');
+                        }
 
-                    if (querySnapshot.empty) {
+                        const querySnapshot = await nameQuery.get();
+                        querySnapshot.forEach(doc => {
+                            // Adiciona produtos encontrados por nome, verificando se já não foram adicionados por ID
+                            // (embora a probabilidade de colisão de ID com um nome seja mínima, é bom para redundância)
+                            if (!products.some(p => p.id === doc.id)) {
+                                products.push({ id: doc.id, ...doc.data() });
+                            }
+                        });
+                    }
+
+
+                    if (products.length === 0) {
                         noResultsMessage.style.display = 'block';
                         return;
                     }
 
                     let sequentialId = 1; // Inicializa o ID sequencial
 
-                    querySnapshot.forEach(doc => {
-                        const product = doc.data();
+                    products.forEach(productData => {
                         const row = resultsTableBody.insertRow();
-                        row.insertCell(0).textContent = sequentialId++; // Exibe o ID sequencial
-                        row.insertCell(1).textContent = product.nome;
-                        row.insertCell(2).textContent = product.quantidade;
-                        row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+                        row.insertCell(0).textContent = sequentialId++; // Código Sequencial
+                        row.insertCell(1).textContent = productData.id; // ID do Firestore
+                        row.insertCell(2).textContent = productData.nome;
+                        row.insertCell(3).textContent = productData.quantidade;
+                        row.insertCell(4).textContent = `R$ ${parseFloat(productData.preco).toFixed(2).replace('.', ',')}`;
 
-                        const dataCadastro = product.dataCadastro ?
-                                             new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                        const dataCadastro = productData.dataCadastro ?
+                                             new Date(productData.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
                                              'N/A';
-                        row.insertCell(4).textContent = dataCadastro;
+                        row.insertCell(5).textContent = dataCadastro;
                     });
 
                 } catch (error) {
@@ -174,9 +201,7 @@
             });
 
             // Carrega todos os produtos ao carregar a página
-            document.addEventListener('DOMContentLoaded', () => {
-                loadProducts();
-            });
+            loadProducts();
         });
     </script>
 </body>
