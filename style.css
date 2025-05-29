@@ -39,7 +39,8 @@ body {
 }
 
 .input-group input[type="text"],
-.input-group input[type="password"] {
+.input-group input[type="password"],
+.input-group input[type="email"] { /* Adicionado input[type="email"] */
     width: calc(100% - 20px); /* Ajuste para padding */
     padding: 10px;
     border: 1px solid #ddd;

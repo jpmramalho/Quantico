@@ -57,20 +57,28 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <script>
-        // Configuração do Firebase com seus dados - ATUALIZE A API KEY AQUI!
+        // Configuração do Firebase com seus dados
         const firebaseConfig = {
-            apiKey: "COLE_SUA_CHAVE_DE_API_AQUI", // <--- *** SUBSTITUA ESTA LINHA PELA SUA CHAVE DE API REAL DO FIREBASE ***
-            authDomain: "quantico-app-18f7f.firebaseapp.com",
-            projectId: "quantico-app-18f7f",
-            storageBucket: "quantico-app-18f7f.appspot.com",
-            messagingSenderId: "150416611107",
-            appId: "1:150416611107:web:bfa4924b8e9b2199d55e96" // Usando o novo ID do app que você forneceu
+            apiKey: "AIzaSyCLWgVTPbEQIRuyCHYlTaCUVLIo-IIaRkw",
+            authDomain: "quanticoapp-b8bc7.firebaseapp.com",
+            projectId: "quanticoapp-b8bc7",
+            storageBucket: "quanticoapp-b8bc7.firebasestorage.app",
+            messagingSenderId: "24127501693",
+            appId: "1:24127501693:web:ebbd4ff4c761ba7f344814"
         };
 
         // Inicializa o Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+
+        // Verifica o estado da autenticação ao carregar a página
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                // Se não houver usuário logado, redireciona para a página de login
+                window.location.href = 'index.html';
+            }
+        });
 
         // Lógica para abrir/fechar submenus ao clicar
         document.querySelectorAll('.menu-toggle').forEach(item => {
@@ -108,6 +116,7 @@
             noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
+                // Ordena os produtos pela data de cadastro em ordem decrescente
                 const querySnapshot = await db.collection('produtos').orderBy('dataCadastro', 'desc').get();
 
                 if (querySnapshot.empty) {
