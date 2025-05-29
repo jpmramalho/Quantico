@@ -78,12 +78,21 @@
                 const targetId = this.dataset.target;
                 const submenu = document.getElementById(targetId);
 
+                // Fecha outros submenus abertos
                 document.querySelectorAll('.submenu').forEach(sub => {
                     if (sub !== submenu && sub.classList.contains('active')) {
                         sub.classList.remove('active');
+                        sub.style.maxHeight = null; // Reseta a altura para que a transição funcione ao fechar
                     }
                 });
+
+                // Alterna a classe 'active' e ajusta a altura
                 submenu.classList.toggle('active');
+                if (submenu.classList.contains('active')) {
+                    submenu.style.maxHeight = submenu.scrollHeight + "px"; // Define a altura para o scrollHeight
+                } else {
+                    submenu.style.maxHeight = null; // Reseta a altura
+                }
             });
         });
 
