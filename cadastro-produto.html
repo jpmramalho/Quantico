@@ -30,9 +30,9 @@
         </aside>
         <main class="content">
             <div class="form-container">
-                <h2 id="formTitle">Cadastro de Produto</h2>
+                <h2>Cadastro de Produto</h2>
                 <form id="produtoForm">
-                    <input type="hidden" id="productId"> <div class="form-group">
+                    <div class="form-group">
                         <label for="nome">Nome do Produto:</label>
                         <input type="text" id="nome" name="nome" required>
                     </div>
@@ -46,168 +46,113 @@
                     </div>
                     <div class="button-group">
                         <button type="submit" id="saveButton">Salvar</button>
-                        <button type="button" id="newProductButton" style="display:none;">Novo Produto</button>
-                        </div>
+                        <button type="button" id="editButton">Editar</button>
+                        <button type="button" id="deleteButton">Excluir</button>
+                    </div>
                 </form>
             </div>
         </main>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Lógica para alternar submenus (mantido)
+            // Lógica para o menu lateral retrátil
             document.querySelectorAll('.menu-toggle').forEach(button => {
-                button.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    const targetId = event.target.dataset.target;
+                button.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
                     const submenu = document.getElementById(targetId);
 
+                    // Fecha outros submenus abertos
                     document.querySelectorAll('.submenu').forEach(sub => {
                         if (sub !== submenu && sub.classList.contains('active')) {
                             sub.classList.remove('active');
-                            sub.style.maxHeight = null;
+                            sub.style.maxHeight = null; // Reseta a altura para que a transição funcione ao fechar
                         }
                     });
 
+                    // Alterna a classe 'active' e ajusta a altura
                     submenu.classList.toggle('active');
                     if (submenu.classList.contains('active')) {
-                        submenu.style.maxHeight = submenu.scrollHeight + "px";
+                        submenu.style.maxHeight = submenu.scrollHeight + "px"; // Define a altura para o scrollHeight
                     } else {
-                        submenu.style.maxHeight = null;
+                        submenu.style.maxHeight = null; // Reseta a altura
                     }
                 });
             });
 
-            // Lógica para o botão de sair (mantido)
+            // Lógica para o botão de sair
             document.getElementById('logoutButton').addEventListener('click', function() {
-                if (window.auth) {
-                    window.auth.signOut().then(() => {
-                        window.location.href = 'index.html';
-                    }).catch((error) => {
-                        console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim):", error);
-                        window.location.href = 'index.html';
-                    });
-                } else {
+                window.auth.signOut().then(() => {
                     window.location.href = 'index.html';
-                }
+                }).catch((error) => {
+                    console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                    window.location.href = 'index.html';
+                });
             });
 
-            const formTitle = document.getElementById('formTitle');
-            const productIdField = document.getElementById('productId');
-            const nomeInput = document.getElementById('nome');
-            const precoInput = document.getElementById('preco');
-            const quantidadeInput = document.getElementById('quantidade');
-            const saveButton = document.getElementById('saveButton');
-            const newProductButton = document.getElementById('newProductButton');
-            const produtoForm = document.getElementById('produtoForm');
-
-            // Função para carregar um produto para edição
-            async function loadProductForEdit(productId) {
-                if (!window.db) {
-                    console.error("Firestore não inicializado.");
-                    alert("Erro: O banco de dados não pôde ser acessado.");
-                    return;
-                }
-                try {
-                    const docRef = db.collection('produtos').doc(productId);
-                    const doc = await docRef.get();
-
-                    if (doc.exists) {
-                        const productData = doc.data();
-                        productIdField.value = doc.id; // Guarda o ID do produto
-                        nomeInput.value = productData.nome;
-                        precoInput.value = productData.preco;
-                        quantidadeInput.value = productData.quantidade;
-
-                        formTitle.textContent = 'Editar Produto';
-                        saveButton.textContent = 'Atualizar';
-                        newProductButton.style.display = 'inline-block'; // Mostra o botão "Novo Produto"
-                    } else {
-                        alert('Produto não encontrado para edição.');
-                        console.warn("Produto não encontrado com ID:", productId);
-                        // Se não encontrou, reseta o formulário para um novo cadastro
-                        resetFormForNewProduct();
-                    }
-                } catch (error) {
-                    console.error("Erro ao carregar produto para edição: ", error);
-                    alert("Ocorreu um erro ao carregar o produto para edição. Verifique o console.");
-                    resetFormForNewProduct(); // Em caso de erro, reseta
-                }
-            }
-
-            // Função para resetar o formulário para um novo cadastro
-            function resetFormForNewProduct() {
-                produtoForm.reset();
-                productIdField.value = '';
-                formTitle.textContent = 'Cadastro de Produto';
-                saveButton.textContent = 'Salvar';
-                newProductButton.style.display = 'none'; // Esconde o botão "Novo Produto"
-            }
-
-            // Verifica se há um ID de produto na URL ao carregar a página
-            const urlParams = new URLSearchParams(window.location.search);
-            const productIdFromUrl = urlParams.get('id');
-            if (productIdFromUrl) {
-                loadProductForEdit(productIdFromUrl);
-            } else {
-                resetFormForNewProduct(); // Garante que o formulário está para cadastro se não houver ID
-            }
-
-            // Lógica para o botão "Novo Produto"
-            newProductButton.addEventListener('click', function() {
-                resetFormForNewProduct();
-            });
-
-            // Lógica para o formulário de Cadastro/Atualização
-            produtoForm.addEventListener('submit', async function(event) {
+            // Lógica para salvar produto
+            document.getElementById('produtoForm').addEventListener('submit', async function(event) {
                 event.preventDefault();
 
-                const nome = nomeInput.value;
-                const preco = parseFloat(precoInput.value);
-                const quantidade = parseInt(quantidadeInput.value, 10);
-                const productId = productIdField.value; // Pega o ID do campo oculto
+                const nome = document.getElementById('nome').value;
+                const preco = parseFloat(document.getElementById('preco').value);
+                const quantidade = parseInt(document.getElementById('quantidade').value);
 
-                if (!nome || isNaN(preco) || isNaN(quantidade)) {
-                    alert('Por favor, preencha todos os campos corretamente (nome, preço, quantidade).');
-                    return;
-                }
-                if (!window.db) {
-                    console.error("Firestore não inicializado.");
-                    alert("Erro: O banco de dados não pôde ser acessado.");
+                if (!nome || isNaN(preco) || isNaN(quantidade) || preco <= 0 || quantidade < 0) {
+                    alert('Por favor, preencha todos os campos corretamente (preço e quantidade devem ser números positivos).');
                     return;
                 }
 
                 try {
-                    if (productId) {
-                        // Se há um productId, está editando um produto existente
-                        await db.collection('produtos').doc(productId).update({
-                            nome: nome,
-                            preco: preco,
-                            quantidade: quantidade,
-                            // dataCadastro não é atualizada na edição, apenas no primeiro cadastro
-                            dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp() // Adiciona um timestamp de atualização
-                        });
-                        alert('Produto Atualizado com Sucesso!');
-                    } else {
-                        // Caso contrário, está cadastrando um novo produto
-                        await db.collection('produtos').add({
-                            nome: nome,
-                            preco: preco,
-                            quantidade: quantidade,
-                            dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        alert('Produto Salvo com Sucesso!');
-                        resetFormForNewProduct(); // Limpa o formulário para um novo cadastro
-                    }
+                    // Usa uma transação para garantir que o contador seja incrementado de forma segura
+                    const newProductId = await window.db.runTransaction(async (transaction) => {
+                        const counterRef = window.db.collection('contadores').doc('produtos');
+                        const counterDoc = await transaction.get(counterRef);
+
+                        let nextId;
+                        if (!counterDoc.exists) {
+                            // Se o contador não existe, inicia em 1
+                            nextId = 1;
+                            transaction.set(counterRef, { currentId: nextId });
+                        } else {
+                            // Incrementa o contador
+                            nextId = counterDoc.data().currentId + 1;
+                            transaction.update(counterRef, { currentId: nextId });
+                        }
+                        return nextId;
+                    });
+
+                    // Adiciona um novo documento à coleção 'produtos' no Firestore com o ID sequencial
+                    // O .add() ainda gera um ID de documento aleatório, mas vamos adicionar
+                    // nosso próprio campo 'codigoSequencial' para a ordenação.
+                    await db.collection('produtos').add({
+                        codigoSequencial: newProductId, // Adiciona o novo campo
+                        nome: nome,
+                        preco: preco,
+                        quantidade: quantidade,
+                        dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    alert(`Produto Salvo com Sucesso! Código Sequencial: ${newProductId}`);
+                    document.getElementById('produtoForm').reset(); // Limpa os campos do formulário após salvar
 
                 } catch (error) {
-                    console.error("Erro ao salvar/atualizar o produto no Firestore: ", error);
-                    alert("Ocorreu um erro ao salvar/atualizar o produto. Verifique o console do navegador para mais detalhes e suas regras de segurança do Firestore.");
+                    console.error("Erro ao salvar o produto no Firestore: ", error);
+                    alert("Ocorreu um erro ao salvar o produto. Verifique o console do navegador para mais detalhes e suas regras de segurança do Firestore.");
                 }
+            });
+
+            // Lógica para os botões Editar e Excluir (apenas alertas de funcionalidade a ser implementada)
+            document.getElementById('editButton').addEventListener('click', function() {
+                alert('Funcionalidade de Editar Produto (a ser implementada futuramente)');
+            });
+
+            document.getElementById('deleteButton').addEventListener('click', function() {
+                alert('Funcionalidade de Excluir Produto (a ser implementada futuramente)');
             });
         });
     </script>

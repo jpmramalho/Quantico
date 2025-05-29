@@ -33,8 +33,8 @@
                 <h2>Localizar Produto</h2>
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="searchQuery">Buscar por Código (Sequencial ou ID do Firestore) ou Nome do Produto:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código sequencial, ID do Firestore, ou nome. Use '*' no início do nome.">
+                        <label for="searchQuery">Buscar por Nome:</label>
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -45,16 +45,16 @@
 
             <div class="search-results">
                 <h3>Resultados da Busca</h3>
-                <p id="noResultsMessage" style="display: none;">Nenhum produto encontrado.</p>
+                <p id="noResultsMessage" class="error-message" style="display: none;">Nenhum produto encontrado.</p>
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código Seq.</th>
-                            <th>Nome do Produto</th>
+                            <th>Código Sequencial</th>
+                            <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
                             <th>Data de Cadastro</th>
-                            <th>Ações</th> </tr>
+                        </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
@@ -64,16 +64,15 @@
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Lógica para alternar submenus (mantido)
+            // Lógica para o menu lateral retrátil
             document.querySelectorAll('.menu-toggle').forEach(button => {
-                button.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    const targetId = event.target.dataset.target;
+                button.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
                     const submenu = document.getElementById(targetId);
 
                     document.querySelectorAll('.submenu').forEach(sub => {
@@ -92,166 +91,61 @@
                 });
             });
 
-            // Lógica para o botão de sair (mantido)
+            // Lógica para o botão de sair
             document.getElementById('logoutButton').addEventListener('click', function() {
-                if (window.auth) {
-                    window.auth.signOut().then(() => {
-                        window.location.href = 'index.html';
-                    }).catch((error) => {
-                        console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim):", error);
-                        window.location.href = 'index.html';
-                    });
-                } else {
+                window.auth.signOut().then(() => {
                     window.location.href = 'index.html';
-                }
+                }).catch((error) => {
+                    console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                    window.location.href = 'index.html';
+                });
             });
 
-            // Função para carregar produtos com busca (ALTERADA SIGNIFICATIVAMENTE)
+            const resultsTableBody = document.getElementById('resultsTableBody');
+            const noResultsMessage = document.getElementById('noResultsMessage');
+
             async function loadProducts(searchQuery = '') {
-                const resultsTableBody = document.getElementById('resultsTableBody');
                 resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
-                const noResultsMessage = document.getElementById('noResultsMessage');
-                noResultsMessage.style.display = 'none';
-
-                if (!window.db) {
-                    console.error("Firestore não inicializado. Verifique script.js e a ordem de carregamento.");
-                    alert("Erro: O banco de dados não pôde ser acessado. Tente novamente mais tarde.");
-                    return;
-                }
-
-                const normalizedSearchQuery = searchQuery.trim();
-                let productsToDisplay = new Map(); // Usar Map para garantir unicidade e ordem (se necessário)
+                noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum produto"
 
                 try {
-                    // Sempre carregamos todos os produtos para possibilitar busca por código sequencial e "contém"
-                    const allProductsQuerySnapshot = await db.collection('produtos').orderBy('nome').get();
-                    let allProducts = [];
-                    allProductsQuerySnapshot.forEach(doc => {
-                        allProducts.push({ id: doc.id, ...doc.data() });
-                    });
+                    let query = window.db.collection('produtos');
 
-                    if (!normalizedSearchQuery) {
-                        // Se a busca estiver vazia, exibe todos os produtos carregados
-                        allProducts.forEach(p => productsToDisplay.set(p.id, p));
-                    } else {
-                        // 1. Tentar buscar por Código Sequencial (FILTRAGEM NO CLIENTE)
-                        const searchAsNumber = parseInt(normalizedSearchQuery, 10);
-                        if (!isNaN(searchAsNumber) && searchAsNumber > 0) {
-                            // Cuidado: Esta abordagem assume que a ordem "sequencial" é a da exibição após o carregamento.
-                            // NÃO É ESCALÁVEL para grandes coleções de produtos.
-                            alert("Atenção: A busca por Código Sequencial carrega todos os produtos e filtra localmente, podendo ser lenta para grandes volumes de dados.");
-                            
-                            // No exemplo, o sequentialId é 1-baseado na exibição.
-                            // Acessamos como array 0-baseado.
-                            if (searchAsNumber <= allProducts.length) {
-                                const foundProduct = allProducts[searchAsNumber - 1];
-                                if (foundProduct) {
-                                    productsToDisplay.set(foundProduct.id, foundProduct);
-                                }
-                            }
-                        }
-
-                        // 2. Tentar buscar pelo ID do Firestore (busca exata)
-                        // Esta é a sua "busca por código" que o Firestore suporta.
-                        // Só tenta se não encontrou nada pelo código sequencial, ou se não foi um número.
-                        if (productsToDisplay.size === 0) {
-                            const docRef = db.collection('produtos').doc(normalizedSearchQuery);
-                            const doc = await docRef.get();
-                            if (doc.exists) {
-                                productsToDisplay.set(doc.id, { id: doc.id, ...doc.data() });
-                            }
-                        }
-
-                        // 3. Tentar buscar por nome (FILTRAGEM NO CLIENTE para "*")
-                        let searchTermForName = normalizedSearchQuery;
-                        let performClientSideNameFilter = false;
-
-                        if (normalizedSearchQuery.startsWith('*')) {
-                            performClientSideNameFilter = true;
-                            searchTermForName = normalizedSearchQuery.substring(1); // Remove o '*' inicial
-                            if (searchTermForName === '') {
-                                // Se digitou apenas '*', exibe todos os produtos (já carregados acima)
-                                allProducts.forEach(p => productsToDisplay.set(p.id, p));
-                            }
-                        }
-                        
-                        if (performClientSideNameFilter && searchTermForName !== '') {
-                            // Cuidado: Esta abordagem já alertada antes, busca TODOS os produtos e filtra no cliente.
-                            // Realizamos essa filtragem sobre 'allProducts' que já foi carregado.
-                            const filteredByName = allProducts.filter(p => 
-                                p.nome && p.nome.toLowerCase().includes(searchTermForName.toLowerCase())
-                            );
-                            filteredByName.forEach(p => productsToDisplay.set(p.id, p));
-                        } else if (!performClientSideNameFilter && productsToDisplay.size === 0 && searchTermForName) {
-                            // Se não é busca com '*' e não encontrou por ID/sequencial, busca por prefixo (Firestore)
-                            const nameQuerySnapshot = await db.collection('produtos')
-                                .orderBy('nome')
-                                .startAt(searchTermForName)
-                                .endAt(searchTermForName + '\uf8ff')
-                                .get();
-
-                            nameQuerySnapshot.forEach(doc => {
-                                if (!productsToDisplay.has(doc.id)) {
-                                    productsToDisplay.set(doc.id, { id: doc.id, ...doc.data() });
-                                }
-                            });
-                        }
+                    if (searchQuery) {
+                        // Para busca por nome, o Firestore exige uma correspondência exata ou prefixo.
+                        // Para uma busca "contém", você precisaria de uma solução mais avançada (ex: Algolia, ou iterar nos resultados).
+                        // Por simplicidade, vamos filtrar pelo início do nome (case-insensitive)
+                        // Note: Firestore text search capabilities are limited without external services.
+                        // For a robust "contains" search, you'd process results client-side or use a dedicated search service.
+                        query = query.where('nome', '>=', searchQuery)
+                                     .where('nome', '<=', searchQuery + '\uf8ff');
                     }
+                    
+                    // Adiciona a ordenação pelo novo campo codigoSequencial
+                    // Por padrão, é ascendente. Para descendente, use .orderBy('codigoSequencial', 'desc')
+                    query = query.orderBy('codigoSequencial', 'asc'); 
 
-                    if (productsToDisplay.size === 0) {
+                    const querySnapshot = await query.get();
+
+                    if (querySnapshot.empty) {
                         noResultsMessage.style.display = 'block';
                         return;
                     }
 
-                    let sequentialId = 1; // Inicializa o ID sequencial para exibição
-
-                    // Itera sobre os valores do Map para exibir
-                    // Converte para array e ordena para garantir que o sequentialId seja consistente
-                    const sortedProducts = Array.from(productsToDisplay.values()).sort((a, b) => a.nome.localeCompare(b.nome));
-
-                    sortedProducts.forEach(productData => {
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
                         const row = resultsTableBody.insertRow();
-                        row.insertCell(0).textContent = sequentialId++; // Código Sequencial
-                        row.insertCell(1).textContent = productData.nome;
-                        row.insertCell(2).textContent = productData.quantidade;
-                        row.insertCell(3).textContent = `R$ ${parseFloat(productData.preco).toFixed(2).replace('.', ',')}`;
+                        // Exibe o novo campo codigoSequencial
+                        row.insertCell(0).textContent = product.codigoSequencial || 'N/A'; // Exibe o código sequencial
+                        row.insertCell(1).textContent = product.nome;
+                        row.insertCell(2).textContent = product.quantidade;
+                        row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
 
-                        const dataCadastro = productData.dataCadastro ?
-                                             new Date(productData.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                        // Formata a data de cadastro, se existir
+                        const dataCadastro = product.dataCadastro ?
+                                             new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
                                              'N/A';
                         row.insertCell(4).textContent = dataCadastro;
-
-                        // Célula de Ações
-                        const actionsCell = row.insertCell(5);
-                        actionsCell.classList.add('actions-cell'); // Adiciona uma classe para estilização
-
-                        // Botão Editar
-                        const editButton = document.createElement('button');
-                        editButton.textContent = 'Editar';
-                        editButton.classList.add('edit-btn');
-                        editButton.addEventListener('click', () => {
-                            // Redireciona para a página de cadastro com o ID do produto na URL
-                            window.location.href = `cadastro-produto.html?id=${productData.id}`;
-                        });
-                        actionsCell.appendChild(editButton);
-
-                        // Botão Excluir
-                        const deleteButton = document.createElement('button');
-                        deleteButton.textContent = 'Excluir';
-                        deleteButton.classList.add('delete-btn');
-                        deleteButton.addEventListener('click', async () => {
-                            if (confirm(`Tem certeza que deseja excluir o produto "${productData.nome}"?`)) {
-                                try {
-                                    await db.collection('produtos').doc(productData.id).delete();
-                                    alert('Produto excluído com sucesso!');
-                                    loadProducts(normalizedSearchQuery); // Recarrega a lista após a exclusão
-                                } catch (error) {
-                                    console.error("Erro ao excluir produto: ", error);
-                                    alert("Ocorreu um erro ao excluir o produto. Verifique o console.");
-                                }
-                            }
-                        });
-                        actionsCell.appendChild(deleteButton);
                     });
 
                 } catch (error) {
@@ -274,7 +168,9 @@
             });
 
             // Carrega todos os produtos ao carregar a página
-            loadProducts(); // Chama ao carregar a página inicialmente
+            document.addEventListener('DOMContentLoaded', () => {
+                loadProducts();
+            });
         });
     </script>
 </body>

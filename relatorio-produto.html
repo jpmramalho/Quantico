@@ -38,11 +38,10 @@
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código</th>
-                            <th>Nome</th>
+                            <th>Código Sequencial</th> <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
-                            <th>Data Cadastro</th>
+                            <th>Data de Cadastro</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
@@ -53,88 +52,87 @@
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
     <script>
-        // Lógica para alternar submenus
-        document.querySelectorAll('.menu-toggle').forEach(button => {
-            button.addEventListener('click', function(event) {
-                event.preventDefault();
-                const targetId = event.target.dataset.target;
-                const submenu = document.getElementById(targetId);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lógica para o menu lateral retrátil
+            document.querySelectorAll('.menu-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.dataset.target;
+                    const submenu = document.getElementById(targetId);
 
-                // Fecha outros submenus abertos
-                document.querySelectorAll('.submenu').forEach(sub => {
-                    if (sub !== submenu && sub.classList.contains('active')) {
-                        sub.classList.remove('active');
-                        sub.style.maxHeight = null; // Reseta a altura para que a transição funcione ao fechar
+                    document.querySelectorAll('.submenu').forEach(sub => {
+                        if (sub !== submenu && sub.classList.contains('active')) {
+                            sub.classList.remove('active');
+                            sub.style.maxHeight = null;
+                        }
+                    });
+
+                    submenu.classList.toggle('active');
+                    if (submenu.classList.contains('active')) {
+                        submenu.style.maxHeight = submenu.scrollHeight + "px";
+                    } else {
+                        submenu.style.maxHeight = null;
                     }
                 });
-
-                // Alterna a classe 'active' e ajusta a altura
-                submenu.classList.toggle('active');
-                if (submenu.classList.contains('active')) {
-                    submenu.style.maxHeight = submenu.scrollHeight + "px"; // Define a altura para o scrollHeight
-                } else {
-                    submenu.style.maxHeight = null; // Reseta a altura
-                }
             });
-        });
 
-        // Lógica para o botão de sair
-        document.getElementById('logoutButton').addEventListener('click', function() {
-            if (window.auth) {
+            // Lógica para o botão de sair
+            document.getElementById('logoutButton').addEventListener('click', function() {
                 window.auth.signOut().then(() => {
                     window.location.href = 'index.html';
                 }).catch((error) => {
                     console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
                     window.location.href = 'index.html';
                 });
-            } else {
-                window.location.href = 'index.html';
-            }
-        });
+            });
 
-        // Função para carregar todos os produtos para o relatório
-        async function loadAllProductsForReport() {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-            resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
-            noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
-            try {
-                const querySnapshot = await db.collection('produtos').orderBy('nome').get(); // Ordena por nome
+            async function loadAllProductsForReport() {
+                resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
+                noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum produto"
 
-                if (querySnapshot.empty) {
-                    noResultsMessage.style.display = 'block';
-                    return;
+                try {
+                    // Ordena os produtos pelo novo campo 'codigoSequencial' em ordem ascendente
+                    const querySnapshot = await window.db.collection('produtos')
+                                                          .orderBy('codigoSequencial', 'asc') // Adiciona a ordenação
+                                                          .get();
+
+                    if (querySnapshot.empty) {
+                        noResultsMessage.style.display = 'block';
+                        return;
+                    }
+
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
+                        const row = resultsTableBody.insertRow();
+                        // Exibe o novo campo codigoSequencial
+                        row.insertCell(0).textContent = product.codigoSequencial || 'N/A'; // Exibe o código sequencial
+                        row.insertCell(1).textContent = product.nome;
+                        row.insertCell(2).textContent = product.quantidade;
+                        row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+
+                        // Formata a data de cadastro, se existir
+                        const dataCadastro = product.dataCadastro ?
+                                             new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                                             'N/A';
+                        row.insertCell(4).textContent = dataCadastro;
+                    });
+
+                } catch (error) {
+                    console.error("Erro ao carregar produtos para relatório: ", error);
+                    alert("Ocorreu um erro ao carregar os produtos para o relatório. Verifique o console para mais detalhes.");
                 }
-
-                querySnapshot.forEach(doc => {
-                    const product = doc.data();
-                    const row = resultsTableBody.insertRow();
-                    row.insertCell(0).textContent = doc.id; // Código/ID do Firestore
-                    row.insertCell(1).textContent = product.nome;
-                    row.insertCell(2).textContent = product.quantidade;
-                    row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
-
-                    // Formata a data de cadastro, se existir
-                    const dataCadastro = product.dataCadastro ?
-                                         new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
-                                         'N/A';
-                    row.insertCell(4).textContent = dataCadastro;
-                });
-
-            } catch (error) {
-                console.error("Erro ao carregar produtos para relatório: ", error);
-                alert("Ocorreu um erro ao carregar os produtos para o relatório. Verifique o console para mais detalhes.");
             }
-        }
 
-        // Carrega todos os produtos ao carregar a página do relatório
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAllProductsForReport();
+            // Carrega todos os produtos ao carregar a página do relatório
+            document.addEventListener('DOMContentLoaded', () => {
+                loadAllProductsForReport();
+            });
         });
     </script>
 </body>
