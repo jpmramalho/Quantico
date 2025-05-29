@@ -33,8 +33,8 @@
                 <h2>Localizar Produto</h2>
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="searchQuery">Buscar por Código ou Nome do Produto:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código (ID) ou nome do produto...">
+                        <label for="searchQuery">Buscar por Código (ID) ou Nome do Produto:</label>
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código (ID) ou nome. Use '*' para buscar no início do nome.">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -50,7 +50,8 @@
                     <thead>
                         <tr>
                             <th>Código Seq.</th>
-                            <th>ID do Firestore</th> <th>Nome do Produto</th>
+                            <th>ID do Firestore</th>
+                            <th>Nome do Produto</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
                             <th>Data de Cadastro</th>
@@ -69,7 +70,7 @@
     <script src="script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Lógica para alternar submenus
+            // Lógica para alternar submenus (mantido)
             document.querySelectorAll('.menu-toggle').forEach(button => {
                 button.addEventListener('click', function(event) {
                     event.preventDefault();
@@ -92,13 +93,13 @@
                 });
             });
 
-            // Lógica para o botão de sair
+            // Lógica para o botão de sair (mantido)
             document.getElementById('logoutButton').addEventListener('click', function() {
                 if (window.auth) {
                     window.auth.signOut().then(() => {
                         window.location.href = 'index.html';
                     }).catch((error) => {
-                        console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                        console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim):", error);
                         window.location.href = 'index.html';
                     });
                 } else {
@@ -106,7 +107,7 @@
                 }
             });
 
-            // Função para carregar produtos com busca por ID ou Nome
+            // Função para carregar produtos com busca por ID ou Nome (ALTERADA)
             async function loadProducts(searchQuery = '') {
                 const resultsTableBody = document.getElementById('resultsTableBody');
                 resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
@@ -119,54 +120,63 @@
                     return;
                 }
 
-                let products = []; // Array para armazenar os produtos encontrados
+                let products = new Map(); // Usar Map para garantir unicidade e ordem (se necessário)
 
                 try {
-                    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+                    const normalizedSearchQuery = searchQuery.trim();
 
-                    // 1. Tentar buscar pelo ID do Firestore (se o termo de busca não estiver vazio)
                     if (normalizedSearchQuery) {
-                        const docRef = db.collection('produtos').doc(searchQuery); // Busca direta por ID
+                        // 1. Tentar buscar pelo ID do Firestore (busca exata)
+                        const docRef = db.collection('produtos').doc(normalizedSearchQuery);
                         const doc = await docRef.get();
                         if (doc.exists) {
-                            products.push({ id: doc.id, ...doc.data() });
-                        }
-                    }
-
-                    // 2. Se nenhum produto foi encontrado pelo ID OU se a busca por ID não foi tentada (searchQuery vazio),
-                    // ou se você quer que a busca por nome seja prioritária/complementar
-                    // Se não encontrou pelo ID ou a busca é vazia, tenta buscar por nome
-                    if (products.length === 0) {
-                        let nameQuery;
-                        if (normalizedSearchQuery) {
-                            // Busca por nome que COMEÇA COM o termo
-                            nameQuery = db.collection('produtos')
-                                          .orderBy('nome')
-                                          .startAt(searchQuery)
-                                          .endAt(searchQuery + '\uf8ff');
-                        } else {
-                            // Carrega todos os produtos se a busca estiver vazia
-                            nameQuery = db.collection('produtos').orderBy('nome');
+                            products.set(doc.id, { id: doc.id, ...doc.data() });
                         }
 
-                        const querySnapshot = await nameQuery.get();
-                        querySnapshot.forEach(doc => {
-                            // Adiciona produtos encontrados por nome, verificando se já não foram adicionados por ID
-                            // (embora a probabilidade de colisão de ID com um nome seja mínima, é bom para redundância)
-                            if (!products.some(p => p.id === doc.id)) {
-                                products.push({ id: doc.id, ...doc.data() });
-                            }
+                        // 2. Tentar buscar por nome (mesmo se encontrou por ID, para complementar se houver mais resultados esperados)
+                        // Lógica para buscar por nome (prefixo)
+                        let searchTermForName = normalizedSearchQuery;
+                        let queryByStartsWith = true; // Flag para indicar se a busca é por 'começa com'
+
+                        if (normalizedSearchQuery.startsWith('*')) {
+                            searchTermForName = normalizedSearchQuery.substring(1); // Remove o '*' inicial
+                            // Para uma busca "contém" real, precisaríamos de uma solução de indexação externa.
+                            // Aqui, vamos manter a busca por prefixo, mas com a sinalização do '*' para o usuário.
+                            // Se o '*' estiver no meio ou fim, a busca por prefixo ainda é a mais eficiente.
+                            // Para uma busca 'contém' completa, como "*abc*", você precisaria de Algolia/ElasticSearch.
+                        }
+                        
+                        if (searchTermForName) {
+                            const nameQuerySnapshot = await db.collection('produtos')
+                                .orderBy('nome')
+                                .startAt(searchTermForName)
+                                .endAt(searchTermForName + '\uf8ff')
+                                .get();
+
+                            nameQuerySnapshot.forEach(doc => {
+                                // Adiciona se não foi adicionado via busca por ID
+                                if (!products.has(doc.id)) {
+                                    products.set(doc.id, { id: doc.id, ...doc.data() });
+                                }
+                            });
+                        }
+
+                    } else {
+                        // Se a busca estiver vazia, carrega todos os produtos
+                        const allProductsQuerySnapshot = await db.collection('produtos').orderBy('nome').get();
+                        allProductsQuerySnapshot.forEach(doc => {
+                            products.set(doc.id, { id: doc.id, ...doc.data() });
                         });
                     }
 
-
-                    if (products.length === 0) {
+                    if (products.size === 0) {
                         noResultsMessage.style.display = 'block';
                         return;
                     }
 
                     let sequentialId = 1; // Inicializa o ID sequencial
 
+                    // Itera sobre os valores do Map
                     products.forEach(productData => {
                         const row = resultsTableBody.insertRow();
                         row.insertCell(0).textContent = sequentialId++; // Código Sequencial
@@ -187,21 +197,21 @@
                 }
             }
 
-            // Lógica para o formulário de Busca de Produto
+            // Lógica para o formulário de Busca de Produto (mantido)
             document.getElementById('searchForm').addEventListener('submit', function(event) {
                 event.preventDefault();
                 const searchQuery = document.getElementById('searchQuery').value;
                 loadProducts(searchQuery);
             });
 
-            // Lógica para o botão "Limpar Busca"
+            // Lógica para o botão "Limpar Busca" (mantido)
             document.getElementById('clearSearch').addEventListener('click', function() {
                 document.getElementById('searchQuery').value = ''; // Limpa o campo de busca
                 loadProducts(); // Recarrega todos os produtos
             });
 
-            // Carrega todos os produtos ao carregar a página
-            loadProducts();
+            // Carrega todos os produtos ao carregar a página (mantido)
+            loadProducts(); // Chama ao carregar a página inicialmente
         });
     </script>
 </body>
