@@ -54,7 +54,7 @@
                             <th>Quantidade</th>
                             <th>Preço</th>
                             <th>Data de Cadastro</th>
-                        </tr>
+                            <th>Ações</th> </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
@@ -120,7 +120,7 @@
                 }
 
                 const normalizedSearchQuery = searchQuery.trim();
-                let productsToDisplay = new Map(); // Usar Map para garantir unicidade
+                let productsToDisplay = new Map(); // Usar Map para garantir unicidade e ordem (se necessário)
 
                 try {
                     // Sempre carregamos todos os produtos para possibilitar busca por código sequencial e "contém"
@@ -141,15 +141,10 @@
                             // NÃO É ESCALÁVEL para grandes coleções de produtos.
                             alert("Atenção: A busca por Código Sequencial carrega todos os produtos e filtra localmente, podendo ser lenta para grandes volumes de dados.");
                             
-                            // Reatribui IDs sequenciais após a ordem do Firebase para encontrar o correto
-                            let tempSequentialProducts = [];
-                            allProductsQuerySnapshot.forEach(doc => {
-                                tempSequentialProducts.push({ id: doc.id, ...doc.data() });
-                            });
                             // No exemplo, o sequentialId é 1-baseado na exibição.
                             // Acessamos como array 0-baseado.
-                            if (searchAsNumber <= tempSequentialProducts.length) {
-                                const foundProduct = tempSequentialProducts[searchAsNumber - 1];
+                            if (searchAsNumber <= allProducts.length) {
+                                const foundProduct = allProducts[searchAsNumber - 1];
                                 if (foundProduct) {
                                     productsToDisplay.set(foundProduct.id, foundProduct);
                                 }
@@ -225,6 +220,38 @@
                                              new Date(productData.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
                                              'N/A';
                         row.insertCell(4).textContent = dataCadastro;
+
+                        // Célula de Ações
+                        const actionsCell = row.insertCell(5);
+                        actionsCell.classList.add('actions-cell'); // Adiciona uma classe para estilização
+
+                        // Botão Editar
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Editar';
+                        editButton.classList.add('edit-btn');
+                        editButton.addEventListener('click', () => {
+                            // Redireciona para a página de cadastro com o ID do produto na URL
+                            window.location.href = `cadastro-produto.html?id=${productData.id}`;
+                        });
+                        actionsCell.appendChild(editButton);
+
+                        // Botão Excluir
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Excluir';
+                        deleteButton.classList.add('delete-btn');
+                        deleteButton.addEventListener('click', async () => {
+                            if (confirm(`Tem certeza que deseja excluir o produto "${productData.nome}"?`)) {
+                                try {
+                                    await db.collection('produtos').doc(productData.id).delete();
+                                    alert('Produto excluído com sucesso!');
+                                    loadProducts(normalizedSearchQuery); // Recarrega a lista após a exclusão
+                                } catch (error) {
+                                    console.error("Erro ao excluir produto: ", error);
+                                    alert("Ocorreu um erro ao excluir o produto. Verifique o console.");
+                                }
+                            }
+                        });
+                        actionsCell.appendChild(deleteButton);
                     });
 
                 } catch (error) {
