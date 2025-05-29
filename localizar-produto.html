@@ -33,8 +33,8 @@
                 <h2>Localizar Produto</h2>
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="searchQuery">Buscar por Nome:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto...">
+                        <label for="searchQuery">Buscar por Nome do Produto:</label>
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto ou parte dele...">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -44,16 +44,15 @@
             </div>
 
             <div class="search-results">
-                <h3>Resultados da Busca:</h3>
-                <p id="noResultsMessage" class="error-message" style="display: none;">Nenhum produto encontrado com o nome especificado.</p>
+                <h3>Resultados da Busca</h3>
+                <p id="noResultsMessage" style="display: none;">Nenhum produto encontrado.</p>
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código</th>
-                            <th>Nome</th>
+                            <th>Código Seq.</th> <th>Nome do Produto</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
-                            <th>Data Cadastro</th>
+                            <th>Data de Cadastro</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
@@ -68,107 +67,116 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="script.js"></script>
     <script>
-        // Lógica para alternar submenus
-        document.querySelectorAll('.menu-toggle').forEach(button => {
-            button.addEventListener('click', function(event) {
-                event.preventDefault();
-                const targetId = event.target.dataset.target;
-                const submenu = document.getElementById(targetId);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lógica para alternar submenus
+            document.querySelectorAll('.menu-toggle').forEach(button => {
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    const targetId = event.target.dataset.target;
+                    const submenu = document.getElementById(targetId);
 
-                // Fecha outros submenus abertos
-                document.querySelectorAll('.submenu').forEach(sub => {
-                    if (sub !== submenu && sub.classList.contains('active')) {
-                        sub.classList.remove('active');
-                        sub.style.maxHeight = null; // Reseta a altura para que a transição funcione ao fechar
+                    document.querySelectorAll('.submenu').forEach(sub => {
+                        if (sub !== submenu && sub.classList.contains('active')) {
+                            sub.classList.remove('active');
+                            sub.style.maxHeight = null;
+                        }
+                    });
+
+                    submenu.classList.toggle('active');
+                    if (submenu.classList.contains('active')) {
+                        submenu.style.maxHeight = submenu.scrollHeight + "px";
+                    } else {
+                        submenu.style.maxHeight = null;
                     }
                 });
+            });
 
-                // Alterna a classe 'active' e ajusta a altura
-                submenu.classList.toggle('active');
-                if (submenu.classList.contains('active')) {
-                    submenu.style.maxHeight = submenu.scrollHeight + "px"; // Define a altura para o scrollHeight
+            // Lógica para o botão de sair
+            document.getElementById('logoutButton').addEventListener('click', function() {
+                if (window.auth) {
+                    window.auth.signOut().then(() => {
+                        window.location.href = 'index.html';
+                    }).catch((error) => {
+                        console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                        window.location.href = 'index.html';
+                    });
                 } else {
-                    submenu.style.maxHeight = null; // Reseta a altura
+                    window.location.href = 'index.html';
                 }
             });
-        });
 
-        // Lógica para o botão de sair
-        document.getElementById('logoutButton').addEventListener('click', function() {
-            if (window.auth) {
-                window.auth.signOut().then(() => {
-                    window.location.href = 'index.html';
-                }).catch((error) => {
-                    console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
-                    window.location.href = 'index.html';
-                });
-            } else {
-                window.location.href = 'index.html';
-            }
-        });
+            // Função para carregar produtos
+            async function loadProducts(searchQuery = '') {
+                const resultsTableBody = document.getElementById('resultsTableBody');
+                resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
+                const noResultsMessage = document.getElementById('noResultsMessage');
+                noResultsMessage.style.display = 'none';
 
-        // Função para carregar produtos
-        async function loadProducts(searchQuery = '') {
-            const resultsTableBody = document.getElementById('resultsTableBody');
-            const noResultsMessage = document.getElementById('noResultsMessage');
-            resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
-            noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
-
-            try {
-                let query = db.collection('produtos');
-
-                // Se houver um termo de busca, adiciona a condição de busca
-                if (searchQuery) {
-                    // Para buscas que começam com o termo (case-insensitive)
-                    query = query.where('nome', '>=', searchQuery)
-                                 .where('nome', '<=', searchQuery + '\uf8ff')
-                                 .orderBy('nome'); // Necessário para where com range
-                }
-
-                const querySnapshot = await query.get();
-
-                if (querySnapshot.empty) {
-                    noResultsMessage.style.display = 'block';
+                if (!window.db) {
+                    console.error("Firestore não inicializado. Verifique script.js e a ordem de carregamento.");
+                    alert("Erro: O banco de dados não pôde ser acessado. Tente novamente mais tarde.");
                     return;
                 }
 
-                querySnapshot.forEach(doc => {
-                    const product = doc.data();
-                    const row = resultsTableBody.insertRow();
-                    row.insertCell(0).textContent = doc.id; // Código/ID do Firestore
-                    row.insertCell(1).textContent = product.nome;
-                    row.insertCell(2).textContent = product.quantidade;
-                    row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+                try {
+                    let productsRef = db.collection('produtos');
+                    let query;
 
-                    // Formata a data de cadastro, se existir
-                    const dataCadastro = product.dataCadastro ?
-                                         new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
-                                         'N/A';
-                    row.insertCell(4).textContent = dataCadastro;
-                });
+                    if (searchQuery) {
+                        // Para buscas que iniciam com o termo
+                        query = productsRef.orderBy('nome')
+                                            .startAt(searchQuery)
+                                            .endAt(searchQuery + '\uf8ff'); // '\uf8ff' é um caractere unicode que permite buscar até o fim de uma string
+                    } else {
+                        query = productsRef.orderBy('nome'); // Ordena por nome se não houver busca
+                    }
 
-            } catch (error) {
-                console.error("Erro ao carregar produtos: ", error);
-                alert("Ocorreu um erro ao carregar os produtos. Verifique o console para mais detalhes.");
+                    const querySnapshot = await query.get();
+
+                    if (querySnapshot.empty) {
+                        noResultsMessage.style.display = 'block';
+                        return;
+                    }
+
+                    let sequentialId = 1; // Inicializa o ID sequencial
+
+                    querySnapshot.forEach(doc => {
+                        const product = doc.data();
+                        const row = resultsTableBody.insertRow();
+                        row.insertCell(0).textContent = sequentialId++; // Exibe o ID sequencial
+                        row.insertCell(1).textContent = product.nome;
+                        row.insertCell(2).textContent = product.quantidade;
+                        row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+
+                        const dataCadastro = product.dataCadastro ?
+                                             new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                                             'N/A';
+                        row.insertCell(4).textContent = dataCadastro;
+                    });
+
+                } catch (error) {
+                    console.error("Erro ao carregar produtos: ", error);
+                    alert("Ocorreu um erro ao carregar os produtos. Verifique o console para mais detalhes.");
+                }
             }
-        }
 
-        // Lógica para o formulário de Busca de Produto
-        document.getElementById('searchForm').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const searchQuery = document.getElementById('searchQuery').value;
-            loadProducts(searchQuery);
-        });
+            // Lógica para o formulário de Busca de Produto
+            document.getElementById('searchForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const searchQuery = document.getElementById('searchQuery').value;
+                loadProducts(searchQuery);
+            });
 
-        // Lógica para o botão "Limpar Busca"
-        document.getElementById('clearSearch').addEventListener('click', function() {
-            document.getElementById('searchQuery').value = ''; // Limpa o campo de busca
-            loadProducts(); // Recarrega todos os produtos
-        });
+            // Lógica para o botão "Limpar Busca"
+            document.getElementById('clearSearch').addEventListener('click', function() {
+                document.getElementById('searchQuery').value = ''; // Limpa o campo de busca
+                loadProducts(); // Recarrega todos os produtos
+            });
 
-        // Carrega todos os produtos ao carregar a página
-        document.addEventListener('DOMContentLoaded', () => {
-            loadProducts();
+            // Carrega todos os produtos ao carregar a página
+            document.addEventListener('DOMContentLoaded', () => {
+                loadProducts();
+            });
         });
     </script>
 </body>
