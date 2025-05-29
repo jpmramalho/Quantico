@@ -67,10 +67,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="script.js"></script>
     <script>
-        // Inicializa o Firebase (se já não estiver inicializado pelo script.js)
-        // Garante que o 'db' esteja disponível neste escopo
-        const db = firebase.firestore();
-        const auth = firebase.auth(); // Para o logout
+        // Acesso às instâncias globais de auth e db
+        const auth = window.auth;
+        const db = window.db;
 
         // Verifica o estado de autenticação ao carregar a página
         auth.onAuthStateChanged(user => {

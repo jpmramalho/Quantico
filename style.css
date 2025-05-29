@@ -41,12 +41,13 @@ body {
 .input-group input[type="text"],
 .input-group input[type="password"],
 .input-group input[type="email"] { /* Adicionado input[type="email"] */
-    width: calc(100% - 20px); /* Ajuste para padding */
+    width: calc(100% - 20px);
     padding: 10px;
+    margin-bottom: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 16px;
-    box-sizing: border-box; /* Inclui padding e borda no width total */
+    box-sizing: border-box; /* Inclui padding e borda */
 }
 
 .login-container button {
@@ -57,7 +58,6 @@ body {
     border-radius: 4px;
     cursor: pointer;
     font-size: 18px;
-    margin-top: 15px;
     width: 100%;
     transition: background-color 0.3s ease;
 }
@@ -67,27 +67,26 @@ body {
 }
 
 .error-message {
-    color: #dc3545;
+    color: red;
     margin-top: 15px;
-    font-weight: bold;
+    font-size: 14px;
 }
 
-/* Estilos para o Layout do App (sidebar e conteúdo principal) */
+/* Estilos da Página de Boas-Vindas (home.html) e Outras Páginas (sem alterações) */
 .app-container {
     display: flex;
-    width: 100vw;
-    height: 100vh;
-    background-color: #f4f4f4; /* Fundo geral do app */
+    width: 100%;
+    min-height: 100vh;
+    background-color: #f4f4f4;
 }
 
 .sidebar {
     width: 250px;
-    background-color: #2c3e50; /* Cor escura para a sidebar */
-    color: #ecf0f1;
-    padding: 20px 0;
+    background-color: #343a40;
+    color: #fff;
+    padding: 20px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
+    flex-shrink: 0; /* Impede que a sidebar encolha */
 }
 
 .sidebar-header {
@@ -97,101 +96,108 @@ body {
 
 .sidebar-header h3 {
     margin: 0;
-    color: #3498db; /* Cor de destaque para o título */
+    color: #007bff;
     font-size: 24px;
 }
 
 .sidebar nav ul {
     list-style: none;
     padding: 0;
-    margin: 0;
 }
 
 .sidebar nav ul li {
-    margin-bottom: 5px;
+    margin-bottom: 10px;
 }
 
 .sidebar nav ul li a {
     display: block;
-    color: #ecf0f1;
+    color: #fff;
     text-decoration: none;
-    padding: 12px 20px;
-    transition: background-color 0.3s ease, color 0.3s ease;
-    font-size: 17px;
+    padding: 10px 15px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
 }
 
 .sidebar nav ul li a:hover,
 .sidebar nav ul li a.active {
-    background-color: #34495e; /* Fundo ao passar o mouse ou ativo */
-    color: #ffffff;
+    background-color: #495057;
 }
 
-.sidebar .submenu {
+.sidebar nav ul li.has-submenu .menu-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar nav ul .submenu {
     list-style: none;
     padding-left: 20px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease-out;
-    background-color: #34495e; /* Fundo do submenu */
 }
 
-.sidebar .submenu.active {
-    max-height: 200px; /* Altura suficiente para mostrar o submenu */
-    transition: max-height 0.5s ease-in;
+.sidebar nav ul .submenu.active {
+    max-height: 200px; /* Ajuste conforme necessário para o conteúdo */
 }
 
-.sidebar .submenu li a {
-    padding: 10px 25px;
-    font-size: 15px;
+.sidebar nav ul .submenu li a {
+    padding: 8px 15px;
+    background-color: #495057;
+    margin-top: 5px;
+}
+
+.sidebar nav ul .submenu li a:hover {
+    background-color: #6c757d;
 }
 
 .content {
     flex-grow: 1;
-    padding: 30px;
-    background-color: #f9f9f9;
-    overflow-y: auto; /* Para permitir scroll se o conteúdo for grande */
+    padding: 20px;
+    background-color: #f8f9fa;
 }
 
-.content h1 {
-    color: #2c3e50;
+.content h1,
+.content h2 {
+    color: #007bff;
     margin-bottom: 20px;
+    text-align: center;
 }
 
 .content p {
+    text-align: center;
+    font-size: 1.1em;
     color: #555;
-    line-height: 1.6;
 }
 
-/* Estilos para Formulários */
 .form-container {
     background-color: #fff;
     padding: 30px;
     border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
     max-width: 600px;
-    margin: 20px auto; /* Centraliza o formulário e adiciona margem */
-}
-
-.form-container h2 {
-    text-align: center;
-    margin-bottom: 30px;
-    color: #007bff;
+    margin: 30px auto;
 }
 
 .form-group {
     margin-bottom: 20px;
+    text-align: left;
 }
 
 .form-group label {
     display: block;
     margin-bottom: 8px;
     font-weight: bold;
-    color: #555;
+    color: #333;
 }
 
 .form-group input[type="text"],
-.form-group input[type="number"] {
-    width: calc(100% - 20px); /* Ajusta para padding e borda */
+.form-group input[type="number"],
+.form-group input[type="email"], /* Adicionado input[type="email"] */
+.form-group select,
+.form-group textarea {
+    width: calc(100% - 20px);
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -235,13 +241,7 @@ body {
     background-color: #fff;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-}
-
-.search-results h3 {
-    color: #2c3e50;
-    margin-bottom: 15px;
-    text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .results-table {
@@ -252,21 +252,28 @@ body {
 
 .results-table th,
 .results-table td {
-    border: 1px solid #eee;
-    padding: 12px 15px;
+    border: 1px solid #ddd;
+    padding: 10px;
     text-align: left;
 }
 
 .results-table th {
-    background-color: #f2f2f2;
+    background-color: #007bff;
+    color: #fff;
     font-weight: bold;
-    color: #333;
 }
 
-.results-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+.results-table tr:nth-child(even) {
+    background-color: #f2f2f2;
 }
 
-.results-table tbody tr:hover {
-    background-color: #f1f1f1;
+.results-table tr:hover {
+    background-color: #e9ecef;
+}
+
+.no-results {
+    text-align: center;
+    color: #666;
+    margin-top: 20px;
+    font-style: italic;
 }
