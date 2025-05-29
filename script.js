@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inicializa o Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    // Inicializa o Firestore
+    const db = firebase.firestore();
 
     const loginForm = document.getElementById('loginForm');
     const errorMessage = document.getElementById('errorMessage');

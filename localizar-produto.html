@@ -33,29 +33,31 @@
                 <h2>Localizar Produto</h2>
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="searchQuery">Buscar por Nome ou Código:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome ou ID do produto">
+                        <label for="searchQuery">Buscar por Nome:</label>
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto">
                     </div>
-                    <button type="submit">Buscar</button>
-                    <button type="button" id="clearSearch">Limpar Busca</button>
+                    <div class="button-group">
+                        <button type="submit">Buscar</button>
+                        <button type="button" id="clearSearch">Limpar Busca</button>
+                    </div>
                 </form>
             </div>
 
             <div class="search-results">
-                <h3>Resultados da Busca</h3>
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Código/ID</th>
-                            <th>Nome</th>
+                            <th>Código</th>
+                            <th>Nome do Produto</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
+                            <th>Data de Cadastro</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
                 </table>
-                <p id="noResultsMessage" style="display: none; text-align: center; margin-top: 20px;">Nenhum produto encontrado.</p>
+                <p id="noResultsMessage" class="no-results" style="display: none;">Nenhum produto encontrado.</p>
             </div>
         </main>
     </div>
@@ -63,24 +65,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
+    <script src="script.js"></script>
     <script>
-        // Configuração do Firebase com seus dados
-        const firebaseConfig = {
-            apiKey: "AIzaSyCLWgVTPbEQIRuyCHYlTaCUVLIo-IIaRkw",
-            authDomain: "quanticoapp-b8bc7.firebaseapp.com",
-            projectId: "quanticoapp-b8bc7",
-            storageBucket: "quanticoapp-b8bc7.firebasestorage.app",
-            messagingSenderId: "24127501693",
-            appId: "1:24127501693:web:ebbd4ff4c761ba7f344814"
-        };
-
-        // Inicializa o Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        // Inicializa o Firebase (se já não estiver inicializado pelo script.js)
+        // Garante que o 'db' esteja disponível neste escopo
         const db = firebase.firestore();
+        const auth = firebase.auth(); // Para o logout
 
-        // Verifica o estado da autenticação ao carregar a página
+        // Verifica o estado de autenticação ao carregar a página
         auth.onAuthStateChanged(user => {
             if (!user) {
                 // Se não houver usuário logado, redireciona para a página de login
@@ -92,7 +84,6 @@
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
                 event.preventDefault();
-
                 const targetId = this.dataset.target;
                 const submenu = document.getElementById(targetId);
 
@@ -101,7 +92,6 @@
                         sub.classList.remove('active');
                     }
                 });
-
                 submenu.classList.toggle('active');
             });
         });
@@ -120,43 +110,27 @@
         async function loadProducts(searchQuery = '') {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-            resultsTableBody.innerHTML = ''; // Limpa a tabela
+            resultsTableBody.innerHTML = ''; // Limpa a tabela antes de carregar novos dados
             noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
-                let productsRef = db.collection('produtos');
-                let querySnapshot;
+                let query = db.collection('produtos').orderBy('dataCadastro', 'desc'); // Ordena por data de cadastro
 
-                if (searchQuery.trim() !== '') {
-                    // Tenta buscar por nome (ignora case, mas Firestore não tem case-insensitive nativo fácil)
-                    // Para buscas mais avançadas, considere uma solução de busca full-text como Algolia ou uma Cloud Function
-                    querySnapshot = await productsRef
+                if (searchQuery) {
+                    // Para buscar por nome (case-insensitive e "contains"), o Firestore não tem uma função nativa 'contains'
+                    // Uma forma comum é usar start/end, mas para busca "contém", geralmente se busca uma correspondência exata ou prefixo.
+                    // Para uma busca mais avançada, seria necessário uma solução de indexação como Algolia ou ElasticSearch.
+                    // Por simplicidade, vamos filtrar por "startsWith" (começa com) aqui.
+                    // Se precisar de "contém", você pode buscar todos e filtrar no cliente, mas cuidado com grandes volumes de dados.
+                    const lowerCaseSearchQuery = searchQuery.toLowerCase();
+                    query = query
                         .where('nome', '>=', searchQuery)
-                        .where('nome', '<=', searchQuery + '\uf8ff')
-                        .get();
-
-                    // Se não encontrar por nome, pode-se tentar buscar por ID do documento
-                    if (querySnapshot.empty) {
-                        try {
-                            const doc = await productsRef.doc(searchQuery).get();
-                            if (doc.exists) {
-                                querySnapshot = {
-                                    forEach: (callback) => callback(doc),
-                                    empty: false
-                                };
-                            } else {
-                                querySnapshot = { empty: true };
-                            }
-                        } catch (e) {
-                            // Erro ao tentar buscar por ID (formato inválido, etc.)
-                            querySnapshot = { empty: true };
-                        }
-                    }
-
-                } else {
-                    // Se não houver termo de busca, carrega todos os produtos
-                    querySnapshot = await productsRef.get();
+                        .where('nome', '<=', searchQuery + '\uf8ff');
+                        // Esta é uma abordagem para "startsWith". Para "contains" exato, sem case-insensitivity, é mais complexo.
+                        // Para case-insensitive, todos os nomes teriam que ser armazenados em lowercase no Firestore.
                 }
+
+                const querySnapshot = await query.get();
 
                 if (querySnapshot.empty) {
                     noResultsMessage.style.display = 'block';
@@ -170,6 +144,12 @@
                     row.insertCell(1).textContent = product.nome;
                     row.insertCell(2).textContent = product.quantidade;
                     row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
+
+                    // Formata a data de cadastro, se existir
+                    const dataCadastro = product.dataCadastro ?
+                                         new Date(product.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
+                                         'N/A';
+                    row.insertCell(4).textContent = dataCadastro;
                 });
 
             } catch (error) {

@@ -57,24 +57,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
+    <script src="script.js"></script>
     <script>
-        // Configuração do Firebase com seus dados
-        const firebaseConfig = {
-            apiKey: "AIzaSyCLWgVTPbEQIRuyCHYlTaCUVLIo-IIaRkw",
-            authDomain: "quanticoapp-b8bc7.firebaseapp.com",
-            projectId: "quanticoapp-b8bc7",
-            storageBucket: "quanticoapp-b8bc7.firebasestorage.app",
-            messagingSenderId: "24127501693",
-            appId: "1:24127501693:web:ebbd4ff4c761ba7f344814"
-        };
-
-        // Inicializa o Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        // Inicializa o Firebase (se já não estiver inicializado pelo script.js)
+        // Garante que o 'db' esteja disponível neste escopo
         const db = firebase.firestore();
+        const auth = firebase.auth(); // Para o logout
 
-        // Verifica o estado da autenticação ao carregar a página
+        // Verifica o estado de autenticação ao carregar a página
         auth.onAuthStateChanged(user => {
             if (!user) {
                 // Se não houver usuário logado, redireciona para a página de login
@@ -82,7 +72,7 @@
             }
         });
 
-        // Lógica para abrir/fechar submenus da sidebar
+        // Lógica para abrir/fechar submenus ao clicar
         document.querySelectorAll('.menu-toggle').forEach(item => {
             item.addEventListener('click', function(event) {
                 event.preventDefault();
@@ -98,35 +88,27 @@
             });
         });
 
-        // Lógica para o botão de Sair
+        // Lógica para o botão de sair
         document.getElementById('logoutButton').addEventListener('click', function() {
             auth.signOut().then(() => {
-                window.location.href = 'index.html'; // Redireciona para a página de login
+                window.location.href = 'index.html';
             }).catch((error) => {
                 console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
                 window.location.href = 'index.html';
             });
         });
 
-        // Lógica para o Formulário de Cadastro de Produto (Botão SALVAR)
+        // Lógica para salvar o produto no Firestore
         document.getElementById('produtoForm').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Impede o recarregamento da página
+            event.preventDefault(); // Impede o envio padrão do formulário
 
-            const nome = document.getElementById('nomeProduto').value.trim();
+            const nome = document.getElementById('nomeProduto').value;
             const preco = parseFloat(document.getElementById('precoProduto').value);
             const quantidade = parseInt(document.getElementById('quantidadeProduto').value);
 
-            // Validação básica dos campos
-            if (!nome) {
-                alert("O nome do produto não pode estar vazio.");
-                return;
-            }
-            if (isNaN(preco) || preco <= 0) {
-                alert("Por favor, insira um preço válido (número maior que zero).");
-                return;
-            }
-            if (isNaN(quantidade) || quantidade <= 0) {
-                alert("Por favor, insira uma quantidade válida (número inteiro maior que zero).");
+            // Validação simples
+            if (!nome || isNaN(preco) || isNaN(quantidade) || preco <= 0 || quantidade <= 0) {
+                alert('Por favor, preencha todos os campos corretamente (preço e quantidade devem ser números positivos).');
                 return;
             }
 
