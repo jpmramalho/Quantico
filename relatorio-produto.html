@@ -34,46 +34,34 @@
             </div>
 
             <div class="search-results">
+                <p id="noResultsMessage" class="error-message" style="display: none;">Nenhum produto cadastrado.</p>
                 <table class="results-table">
                     <thead>
                         <tr>
                             <th>Código</th>
-                            <th>Nome do Produto</th>
+                            <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
-                            <th>Data de Cadastro</th>
+                            <th>Data Cadastro</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
                 </table>
-                <p id="noResultsMessage" class="no-results" style="display: none;">Nenhum produto encontrado.</p>
             </div>
         </main>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="script.js"></script>
     <script>
-        // Acesso às instâncias globais de auth e db
-        const auth = window.auth;
-        const db = window.db;
-
-        // Verifica o estado de autenticação ao carregar a página
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // Se não houver usuário logado, redireciona para a página de login
-                window.location.href = 'index.html';
-            }
-        });
-
-        // Lógica para abrir/fechar submenus ao clicar
-        document.querySelectorAll('.menu-toggle').forEach(item => {
-            item.addEventListener('click', function(event) {
+        // Lógica para alternar submenus
+        document.querySelectorAll('.menu-toggle').forEach(button => {
+            button.addEventListener('click', function(event) {
                 event.preventDefault();
-                const targetId = this.dataset.target;
+                const targetId = event.target.dataset.target;
                 const submenu = document.getElementById(targetId);
 
                 // Fecha outros submenus abertos
@@ -96,24 +84,27 @@
 
         // Lógica para o botão de sair
         document.getElementById('logoutButton').addEventListener('click', function() {
-            auth.signOut().then(() => {
+            if (window.auth) {
+                window.auth.signOut().then(() => {
+                    window.location.href = 'index.html';
+                }).catch((error) => {
+                    console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                    window.location.href = 'index.html';
+                });
+            } else {
                 window.location.href = 'index.html';
-            }).catch((error) => {
-                console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
-                window.location.href = 'index.html';
-            });
+            }
         });
 
-        // Função para carregar e exibir todos os produtos para o relatório
+        // Função para carregar todos os produtos para o relatório
         async function loadAllProductsForReport() {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-            resultsTableBody.innerHTML = ''; // Limpa a tabela antes de carregar novos dados
+            resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
             noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
-                // Busca todos os documentos na coleção 'produtos' ordenados por data de cadastro
-                const querySnapshot = await db.collection('produtos').orderBy('dataCadastro', 'desc').get();
+                const querySnapshot = await db.collection('produtos').orderBy('nome').get(); // Ordena por nome
 
                 if (querySnapshot.empty) {
                     noResultsMessage.style.display = 'block';

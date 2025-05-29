@@ -34,7 +34,7 @@
                 <form id="searchForm">
                     <div class="form-group">
                         <label for="searchQuery">Buscar por Nome:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto">
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o nome do produto...">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -44,46 +44,35 @@
             </div>
 
             <div class="search-results">
+                <h3>Resultados da Busca:</h3>
+                <p id="noResultsMessage" class="error-message" style="display: none;">Nenhum produto encontrado com o nome especificado.</p>
                 <table class="results-table">
                     <thead>
                         <tr>
                             <th>Código</th>
-                            <th>Nome do Produto</th>
+                            <th>Nome</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
-                            <th>Data de Cadastro</th>
+                            <th>Data Cadastro</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
                         </tbody>
                 </table>
-                <p id="noResultsMessage" class="no-results" style="display: none;">Nenhum produto encontrado.</p>
             </div>
         </main>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="script.js"></script>
     <script>
-        // Acesso às instâncias globais de auth e db
-        const auth = window.auth;
-        const db = window.db;
-
-        // Verifica o estado de autenticação ao carregar a página
-        auth.onAuthStateChanged(user => {
-            if (!user) {
-                // Se não houver usuário logado, redireciona para a página de login
-                window.location.href = 'index.html';
-            }
-        });
-
-        // Lógica para abrir/fechar submenus ao clicar
-        document.querySelectorAll('.menu-toggle').forEach(item => {
-            item.addEventListener('click', function(event) {
+        // Lógica para alternar submenus
+        document.querySelectorAll('.menu-toggle').forEach(button => {
+            button.addEventListener('click', function(event) {
                 event.preventDefault();
-                const targetId = this.dataset.target;
+                const targetId = event.target.dataset.target;
                 const submenu = document.getElementById(targetId);
 
                 // Fecha outros submenus abertos
@@ -106,36 +95,34 @@
 
         // Lógica para o botão de sair
         document.getElementById('logoutButton').addEventListener('click', function() {
-            auth.signOut().then(() => {
+            if (window.auth) {
+                window.auth.signOut().then(() => {
+                    window.location.href = 'index.html';
+                }).catch((error) => {
+                    console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
+                    window.location.href = 'index.html';
+                });
+            } else {
                 window.location.href = 'index.html';
-            }).catch((error) => {
-                console.warn("Erro ao fazer logout do Firebase (pode não haver sessão ativa), redirecionando mesmo assim:", error);
-                window.location.href = 'index.html';
-            });
+            }
         });
 
-        // Função para carregar e exibir produtos
+        // Função para carregar produtos
         async function loadProducts(searchQuery = '') {
             const resultsTableBody = document.getElementById('resultsTableBody');
             const noResultsMessage = document.getElementById('noResultsMessage');
-            resultsTableBody.innerHTML = ''; // Limpa a tabela antes de carregar novos dados
+            resultsTableBody.innerHTML = ''; // Limpa os resultados anteriores
             noResultsMessage.style.display = 'none'; // Esconde a mensagem de "nenhum resultado"
 
             try {
-                let query = db.collection('produtos').orderBy('dataCadastro', 'desc'); // Ordena por data de cadastro
+                let query = db.collection('produtos');
 
+                // Se houver um termo de busca, adiciona a condição de busca
                 if (searchQuery) {
-                    // Para buscar por nome (case-insensitive e "contains"), o Firestore não tem uma função nativa 'contains'
-                    // Uma forma comum é usar start/end, mas para busca "contém", geralmente se busca uma correspondência exata ou prefixo.
-                    // Para uma busca mais avançada, seria necessário uma solução de indexação como Algolia ou ElasticSearch.
-                    // Por simplicidade, vamos filtrar por "startsWith" (começa com) aqui.
-                    // Se precisar de "contém", você pode buscar todos e filtrar no cliente, mas cuidado com grandes volumes de dados.
-                    const lowerCaseSearchQuery = searchQuery.toLowerCase();
-                    query = query
-                        .where('nome', '>=', searchQuery)
-                        .where('nome', '<=', searchQuery + '\uf8ff');
-                        // Esta é uma abordagem para "startsWith". Para "contains" exato, sem case-insensitivity, é mais complexo.
-                        // Para case-insensitive, todos os nomes teriam que ser armazenados em lowercase no Firestore.
+                    // Para buscas que começam com o termo (case-insensitive)
+                    query = query.where('nome', '>=', searchQuery)
+                                 .where('nome', '<=', searchQuery + '\uf8ff')
+                                 .orderBy('nome'); // Necessário para where com range
                 }
 
                 const querySnapshot = await query.get();
@@ -148,7 +135,7 @@
                 querySnapshot.forEach(doc => {
                     const product = doc.data();
                     const row = resultsTableBody.insertRow();
-                    row.insertCell(0).textContent = doc.id; // ID do Firestore
+                    row.insertCell(0).textContent = doc.id; // Código/ID do Firestore
                     row.insertCell(1).textContent = product.nome;
                     row.insertCell(2).textContent = product.quantidade;
                     row.insertCell(3).textContent = `R$ ${parseFloat(product.preco).toFixed(2).replace('.', ',')}`;
