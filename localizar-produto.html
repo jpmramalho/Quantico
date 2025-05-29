@@ -34,7 +34,7 @@
                 <form id="searchForm">
                     <div class="form-group">
                         <label for="searchQuery">Buscar por Código (ID) ou Nome do Produto:</label>
-                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código (ID) ou nome. Use '*' para buscar no início do nome.">
+                        <input type="text" id="searchQuery" name="searchQuery" placeholder="Digite o código (ID) ou nome. Use '*' no início para buscar 'contém'.">
                     </div>
                     <div class="button-group">
                         <button type="submit">Buscar</button>
@@ -50,7 +50,6 @@
                     <thead>
                         <tr>
                             <th>Código Seq.</th>
-                            <th>ID do Firestore</th>
                             <th>Nome do Produto</th>
                             <th>Quantidade</th>
                             <th>Preço</th>
@@ -121,40 +120,58 @@
                 }
 
                 let products = new Map(); // Usar Map para garantir unicidade e ordem (se necessário)
+                const normalizedSearchQuery = searchQuery.trim();
 
                 try {
-                    const normalizedSearchQuery = searchQuery.trim();
-
                     if (normalizedSearchQuery) {
+                        let searchTermForName = normalizedSearchQuery;
+                        let performClientSideFilter = false;
+
+                        if (normalizedSearchQuery.startsWith('*')) {
+                            performClientSideFilter = true;
+                            searchTermForName = normalizedSearchQuery.substring(1); // Remove o '*' inicial
+                            if (searchTermForName === '') {
+                                // Se digitou apenas '*', exibe todos os produtos (com alerta)
+                                alert("Aviso: Digitar apenas '*' resultará em uma busca de todos os produtos, o que pode ser lento para grandes volumes.");
+                            }
+                        }
+
                         // 1. Tentar buscar pelo ID do Firestore (busca exata)
+                        // Esta é a sua "busca por código" que o Firestore suporta.
                         const docRef = db.collection('produtos').doc(normalizedSearchQuery);
                         const doc = await docRef.get();
                         if (doc.exists) {
                             products.set(doc.id, { id: doc.id, ...doc.data() });
                         }
 
-                        // 2. Tentar buscar por nome (mesmo se encontrou por ID, para complementar se houver mais resultados esperados)
-                        // Lógica para buscar por nome (prefixo)
-                        let searchTermForName = normalizedSearchQuery;
-                        let queryByStartsWith = true; // Flag para indicar se a busca é por 'começa com'
+                        // 2. Tentar buscar por nome
+                        let querySnapshot;
 
-                        if (normalizedSearchQuery.startsWith('*')) {
-                            searchTermForName = normalizedSearchQuery.substring(1); // Remove o '*' inicial
-                            // Para uma busca "contém" real, precisaríamos de uma solução de indexação externa.
-                            // Aqui, vamos manter a busca por prefixo, mas com a sinalização do '*' para o usuário.
-                            // Se o '*' estiver no meio ou fim, a busca por prefixo ainda é a mais eficiente.
-                            // Para uma busca 'contém' completa, como "*abc*", você precisaria de Algolia/ElasticSearch.
-                        }
-                        
-                        if (searchTermForName) {
-                            const nameQuerySnapshot = await db.collection('produtos')
+                        if (performClientSideFilter) {
+                            // Cuidado: Esta abordagem busca TODOS os produtos e filtra no cliente.
+                            // NÃO É ESCALÁVEL para grandes coleções de produtos.
+                            alert("Atenção: A busca com '*' no início busca todos os produtos e filtra localmente, podendo ser lenta para grandes volumes de dados.");
+                            querySnapshot = await db.collection('produtos').orderBy('nome').get();
+                            
+                            querySnapshot.forEach(doc => {
+                                const productData = { id: doc.id, ...doc.data() };
+                                // Filtra no cliente se o nome contém o termo
+                                if (productData.nome.toLowerCase().includes(searchTermForName.toLowerCase())) {
+                                    if (!products.has(doc.id)) {
+                                        products.set(doc.id, productData);
+                                    }
+                                }
+                            });
+
+                        } else if (searchTermForName) {
+                            // Busca por nome que COMEÇA COM o termo (prefixo)
+                            querySnapshot = await db.collection('produtos')
                                 .orderBy('nome')
                                 .startAt(searchTermForName)
                                 .endAt(searchTermForName + '\uf8ff')
                                 .get();
 
-                            nameQuerySnapshot.forEach(doc => {
-                                // Adiciona se não foi adicionado via busca por ID
+                            querySnapshot.forEach(doc => {
                                 if (!products.has(doc.id)) {
                                     products.set(doc.id, { id: doc.id, ...doc.data() });
                                 }
@@ -176,19 +193,19 @@
 
                     let sequentialId = 1; // Inicializa o ID sequencial
 
-                    // Itera sobre os valores do Map
+                    // Itera sobre os valores do Map para exibir
                     products.forEach(productData => {
                         const row = resultsTableBody.insertRow();
                         row.insertCell(0).textContent = sequentialId++; // Código Sequencial
-                        row.insertCell(1).textContent = productData.id; // ID do Firestore
-                        row.insertCell(2).textContent = productData.nome;
-                        row.insertCell(3).textContent = productData.quantidade;
-                        row.insertCell(4).textContent = `R$ ${parseFloat(productData.preco).toFixed(2).replace('.', ',')}`;
+                        // Removida a coluna ID do Firestore
+                        row.insertCell(1).textContent = productData.nome;
+                        row.insertCell(2).textContent = productData.quantidade;
+                        row.insertCell(3).textContent = `R$ ${parseFloat(productData.preco).toFixed(2).replace('.', ',')}`;
 
                         const dataCadastro = productData.dataCadastro ?
                                              new Date(productData.dataCadastro.seconds * 1000).toLocaleString('pt-BR') :
                                              'N/A';
-                        row.insertCell(5).textContent = dataCadastro;
+                        row.insertCell(4).textContent = dataCadastro;
                     });
 
                 } catch (error) {
